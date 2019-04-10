@@ -81,3 +81,11 @@ There are various configuration options. Looking into the start.sh in the main d
 * --rf.burst_preamble_us 10 # tuning parameter
 * --expert.phy.sidelink_master 1 # enables master_node operation so no cell_search is active
 
+Runntime information
+--------------------
+
+Restapi is attached to port 1300 + given expert.phy.sidelink_id i.e. 13001
+
+Date Socket is client listening on port 2200 + given expert.phy.sidelink_id i.e. 22001
+
+
