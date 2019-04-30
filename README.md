@@ -94,3 +94,9 @@ Change TX/RX gain settings
 ```
 curl -X PUT -H "Content-Type: application/json" -d '{"rx_gain":4, "tx_gain":45}' localhost:13001/phy/gain
 ```
+
+send single test packet
+
+```
+echo "Hello From node2" | socat - UDP4-DATAGRAM:10.0.2.9:9015
+```
