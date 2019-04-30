@@ -88,4 +88,9 @@ Restapi is attached to port 1300 + given expert.phy.sidelink_id i.e. 13001
 
 Date Socket is client listening on port 2200 + given expert.phy.sidelink_id i.e. 22001
 
+Change TX/RX gain settings
+--------------------------
 
+```
+curl -X PUT -H "Content-Type: application/json" -d '{"rx_gain":4, "tx_gain":45}' localhost:13001/phy/gain
+```
