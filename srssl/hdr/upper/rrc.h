@@ -338,6 +338,7 @@ public:
   // GW interface
   bool is_connected(); // this is also NAS interface
   bool have_drb();
+  void add_sidelink_drb(uint32_t lcid, uint32_t sidelink_id);
 
   // PDCP interface
   void write_pdu(uint32_t lcid, byte_buffer_t *pdu);
