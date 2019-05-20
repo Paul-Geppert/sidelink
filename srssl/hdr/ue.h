@@ -99,6 +99,7 @@ public:
   void start_plot();
   void print_mbms();
   bool mbms_service_start(uint32_t serv, uint32_t port);
+  bool add_sidelink_drb(uint32_t lcid);
 
   void print_pool();
 
