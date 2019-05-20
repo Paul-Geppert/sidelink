@@ -194,6 +194,7 @@ public:
 
   virtual void print_mbms() = 0;
   virtual bool mbms_service_start(uint32_t serv, uint32_t port) = 0;
+  virtual bool add_sidelink_drb(uint32_t lcid) = 0;
   
   void handle_rf_msg(srslte_rf_error_t error);
 
