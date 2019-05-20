@@ -379,9 +379,10 @@ void radio::set_tx_srate(double srate)
       } else if (srate_khz == 5.76e3) {
         nsamples = 93;
       } else if (srate_khz == 11.52e3) {
-        nsamples = 120;
+        // this fixes the low snr issue on master node
+        nsamples = 171;//120;
       } else if (srate_khz == 15.36e3) {
-        nsamples = 131;
+        nsamples = 171;//131;
       } else if (srate_khz == 23.04e3) {
         nsamples = 150;
       } else {

@@ -56,7 +56,7 @@
 #include <time.h>
 #include <inttypes.h> // for printing uint64_t
 #include <srslte/asn1/liblte_rrc.h>
-#include "srsue/hdr/upper/rrc.h"
+#include "srssl/hdr/upper/rrc.h"
 #include "srslte/asn1/liblte_rrc.h"
 #include "srslte/common/security.h"
 #include "srslte/common/bcd_helpers.h"
@@ -2725,6 +2725,79 @@ void rrc::add_mrb(uint32_t lcid, uint32_t port)
   mac->mch_start_rx(lcid);
   rrc_log->info("Added MRB bearer for lcid:%d\n", lcid);
 }
+
+void rrc::add_sidelink_drb(uint32_t lcid, uint32_t sidelink_id)
+{
+  LIBLTE_RRC_DRB_TO_ADD_MOD_STRUCT *drb_cnfg, drb_cfg;
+  drb_cnfg = &drb_cfg;
+  drb_cnfg->pdcp_cnfg.rlc_um_pdcp_sn_size_present = false;
+// Setup PDCP
+  srslte_pdcp_config_t pdcp_cfg;
+  pdcp_cfg.is_data = true;
+  if (drb_cnfg->pdcp_cnfg.rlc_um_pdcp_sn_size_present) {
+    if (LIBLTE_RRC_PDCP_SN_SIZE_7_BITS == drb_cnfg->pdcp_cnfg.rlc_um_pdcp_sn_size) {
+      pdcp_cfg.sn_len = 7;
+    }
+  }
+  pdcp->add_bearer(lcid, pdcp_cfg);
+  //pdcp->config_security(lcid, k_up_enc, k_up_int, cipher_algo, integ_algo);
+  //pdcp->enable_encryption(lcid);
+
+  // Setup RLC
+  drb_cnfg->rlc_cnfg.rlc_mode=LIBLTE_RRC_RLC_MODE_UM_BI;
+  drb_cnfg->rlc_cnfg.dl_um_bi_rlc.t_reordering = LIBLTE_RRC_T_REORDERING_MS15;
+  drb_cnfg->rlc_cnfg.dl_um_bi_rlc.sn_field_len = LIBLTE_RRC_SN_FIELD_LENGTH_SIZE5;
+  drb_cnfg->rlc_cnfg.ul_um_bi_rlc.sn_field_len = LIBLTE_RRC_SN_FIELD_LENGTH_SIZE5;
+
+  srslte_rlc_config_t rlc_cnfg = srslte_rlc_config_t(&drb_cnfg->rlc_cnfg);
+  rlc_cnfg.rlc_mode = LIBLTE_RRC_RLC_MODE_UM_BI;
+  rlc_cnfg.um.t_reordering = 15;
+  rlc_cnfg.um.rx_mod = 32;
+  rlc_cnfg.um.rx_sn_field_length = RLC_UMD_SN_SIZE_5_BITS;
+  rlc_cnfg.um.rx_window_size = 16;
+  rlc_cnfg.um.tx_sn_field_length = RLC_UMD_SN_SIZE_5_BITS;
+  rlc_cnfg.um.tx_mod = 32;
+  rlc->add_bearer(lcid, rlc_cnfg);
+
+  // Setup MAC
+  uint8_t log_chan_group = 0;
+  uint8_t priority = 1;
+  int prioritized_bit_rate = -1;
+  int bucket_size_duration = -1;
+  if (drb_cnfg->lc_cnfg.ul_specific_params_present) {
+    if (drb_cnfg->lc_cnfg.ul_specific_params.log_chan_group_present) {
+      log_chan_group = drb_cnfg->lc_cnfg.ul_specific_params.log_chan_group;
+    } else {
+      rrc_log->warning("LCG not present, setting to 0\n");
+    }
+    priority = drb_cnfg->lc_cnfg.ul_specific_params.priority;
+//    prioritized_bit_rate = liblte_rrc_prioritized_bit_rate_num[drb_cnfg->lc_cnfg.ul_specific_params.prioritized_bit_rate];
+
+    if (prioritized_bit_rate > 0) {
+      rrc_log->warning("PBR>0 currently not supported. Setting it to Inifinty\n");
+      prioritized_bit_rate = -1;
+    }
+
+    bucket_size_duration = liblte_rrc_bucket_size_duration_num[drb_cnfg->lc_cnfg.ul_specific_params.bucket_size_duration];
+  }
+  //mac->setup_lcid(lcid, log_chan_group, priority, prioritized_bit_rate, bucket_size_duration);
+
+  drbs[lcid] = *drb_cnfg;
+  drb_up     = true;
+  rrc_log->info("Added radio bearer %s\n", get_rb_name(lcid).c_str());
+
+  // Setup GW
+      struct in_addr ip_addr;
+      memset(&ip_addr, '\0', sizeof(ip_addr));
+      
+      char *err_str = NULL;
+      char ip[16];
+      sprintf(ip, "%s%d", "10.0.2.", (int)(10 + sidelink_id));
+      
+      inet_aton(ip, &ip_addr);
+      gw->setup_if_addr(ntohl(ip_addr.s_addr), err_str);
+}
+
 
 // PHY CONFIG DEDICATED Defaults (3GPP 36.331 v10 9.2.4)
 void rrc::set_phy_default_pucch_srs() {

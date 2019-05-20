@@ -1,1 +1,1 @@
-sudo build/srssl/src/srssl srssl/ue.conf.example --rf.device_args "type=b200" --log.all_level "info" --rf.continuous_tx "no" --rf.dl_freq 2350000000 --rf.ul_freq 2350000000 --expert.phy.sidelink_id 1 --rf.rx_gain 40 --rf.tx_gain 30 --rf.burst_preamble_us 10 --expert.phy.sidelink_master 1
+sudo build/srssl/src/srssl srssl/ue.conf.example --expert.phy.sidelink_id 1 --expert.phy.sidelink_master 1

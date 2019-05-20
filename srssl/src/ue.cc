@@ -333,11 +333,28 @@ void ue::stop()
 
 bool ue::attach() {
   if(args->expert.phy.sidelink_master) {
+    // set state to nas
+    //nas.state=EMM_STATE_REGISTERED;
+    // enable bearer for sidelink
+    
+    // create master cell
     return phy.cell_create();
+
+    // try to setup bearer through rrc
+    //uint32_t lcid = 1;
+    //rrc.add_sidelink_drb(lcid);
+    //return 1;
+    
   } else {
     return nas.attach_request();
   }
 }
+
+bool ue::add_sidelink_drb(uint32_t lcid){
+      rrc.add_sidelink_drb(lcid, args->expert.phy.sidelink_id);
+      return true;
+}
+
 
 bool ue::deattach() {
   return nas.deattach_request();

@@ -485,7 +485,8 @@ void phch_recv::run_thread()
           case sfn_sync::IDLE:
             break;
           default:
-            phy_state.state_exit(false);
+            printf("SFN_SYNC: Failed to sync up, going to IDLE. Override we keep searching!\n");
+            // phy_state.state_exit(false);
             break;
         }
         break;
@@ -589,6 +590,8 @@ void phch_recv::run_thread()
               out_of_sync();
               worker->release();
               worker_com->reset_ul();
+              printf("SYNC: Out-of-sync detected in PSS/SSS, forcing to sfn sync tti: %d sync state: %d\n", tti, ue_sync.state);
+              phy_state.force_sfn_sync();
               break;
             default:
               radio_error();

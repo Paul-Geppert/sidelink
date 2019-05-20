@@ -401,13 +401,10 @@ void phch_worker::work_imp()
 
   dl_grant_available = decode_pscch_dl(&dl_mac_grant); 
 
-
-  // int32_t decoded_bytes = 0;
-  // uint8_t data[100];
-  // srslte_ue_sl_pscch_decode(&ue_sl,
-  //                           &ue_repo,
-  //                           data,
-  //                           &decoded_bytes);
+  // do not decode our own sent messages
+  if(dl_grant_available && ((srslte_repo_get_t_SL_k(&phy->ue_repo, tti) % 5) == phy->args->sidelink_id)) {
+    dl_grant_available = false;
+  }
 
   if(dl_grant_available) {
     //printf("dl_grant_available %d\n", my_id);
@@ -502,67 +499,70 @@ void phch_worker::work_imp()
     ul_mac_grant.rnti_type = SRSLTE_RNTI_SL_RANDOM;
     ul_mac_grant.tti = t_SL_k;//tti;
 
-    ul_mac_grant.n_bytes[0] = 101;
-
     // set retransmission gap
     ul_mac_grant.phy_grant.sl.time_gap = 5;
 
     /* TTI offset for UL */
     ul_action.tti_offset = 5;//HARQ_DELAY_MS;
 
+    // find a suitable tbs and mcs level
+    srslte_ra_sl_sci_t sci;
+    sci.priority = 0;
+    sci.resource_reservation = 0;
+
+    sci.time_gap = ul_mac_grant.phy_grant.sl.time_gap;
+
+    // payload size including mac headers
+    uint32_t target_tbs = 101*8;//5*8;// 88; 
+    bool found_mcs = false;
+
+    uint8_t L_subch = 1;
+    uint8_t n_subCH_start = 0;
+
+    // get valid prb sizes by checking all subchannel sizes
+    for(L_subch = 1; L_subch <= phy->ue_repo.rp.numSubchannel_r14; L_subch++) {
+      int n_prb = L_subch*phy->ue_repo.rp.sizeSubchannel_r14 - 2;
+
+      // check if number of prb fullfills 2^a2*3^a3*5^a5, see14.1.1.4C
+      if(!srslte_dft_precoding_valid_prb(n_prb)) {
+        continue;
+      }
+
+      // specify mcs range
+      for(int mcs=0; mcs<12; mcs++) {
+        sci.mcs.idx = mcs;
+        srslte_sl_fill_ra_mcs(&sci.mcs, n_prb);
+
+        if(sci.mcs.tbs > target_tbs) {
+          found_mcs = true;
+          break;
+        }
+      }
+
+      if(found_mcs) {
+        break;
+      }
+    }
+
+    // @todo what to do in this case?
+    if(!found_mcs) {
+      printf("Failed to aquired a valid MCS for sdu size %d\n", target_tbs);
+      //continue;
+    }
+
+    // mac creates a packet that has exactly this size
+    ul_mac_grant.n_bytes[0] = sci.mcs.tbs/8;
+
+    // get mac pdu
     phy->mac->new_grant_ul(ul_mac_grant, &ul_action);
 
     // /* Set UL CFO before transmission */
     // srslte_ue_ul_set_cfo(&ue_ul, cfo);
 
-    //if(0)
     if(ul_action.payload_ptr[0])
     {
       // fill in required values for sci
-      srslte_ra_sl_sci_t sci;
-      sci.priority = 0;
-      sci.resource_reservation = 0;
-
-      sci.time_gap = ul_mac_grant.phy_grant.sl.time_gap;
       sci.rti = ul_action.rv[0] == 0 ? 0 : 1;
-
-
-      // payload size including mac headers
-      uint32_t sdu_size = ul_mac_grant.n_bytes[0]*8;//5*8;// 88; 
-      bool found_mcs = false;
-
-      uint8_t L_subch = 1;
-      uint8_t n_subCH_start = 0;
-
-      // get valid prb sizes by checking all subchannel sizes
-      for(L_subch = 1; L_subch <= phy->ue_repo.rp.numSubchannel_r14; L_subch++) {
-        int n_prb = L_subch*phy->ue_repo.rp.sizeSubchannel_r14 - 2;
-
-        // check if number of prb fullfills 2^a2*3^a3*5^a5, see14.1.1.4C
-        if(!srslte_dft_precoding_valid_prb(n_prb)) {
-          continue;
-        }
-
-        for(int mcs=0; mcs<12; mcs++) {
-          sci.mcs.idx = mcs;
-          srslte_sl_fill_ra_mcs(&sci.mcs, n_prb);
-
-          if(sci.mcs.tbs > sdu_size) {
-            found_mcs = true;
-            break;
-          }
-        }
-
-        if(found_mcs) {
-          break;
-        }
-      }
-
-
-      if(!found_mcs) {
-        printf("Failed to aquired a valid MCS for sdu size %d\n", sdu_size);
-        //continue;
-      }
       
       float c_bits = 9*12*srslte_mod_bits_x_symbol(sci.mcs.mod)*(L_subch*phy->ue_repo.rp.sizeSubchannel_r14 - 2);
       float i_bits = sci.mcs.tbs;

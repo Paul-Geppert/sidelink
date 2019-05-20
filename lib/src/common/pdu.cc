@@ -393,10 +393,12 @@ uint8_t* slsch_pdu::write_packet(srslte::log *log_h)
   padding.set_padding();
 
   if (nof_subheaders <= 0 && nof_subheaders < (int)max_subheaders) {
+    /*
     if(log_h)
       log_h->error("Trying to write packet with invalid number of subheaders (nof_subheaders=%d).\n", nof_subheaders);
       else
         printf("Trying to write packet with invalid number of subheaders (nof_subheaders=%d).\n", nof_subheaders);
+    */
     return NULL;
   }
 

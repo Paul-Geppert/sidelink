@@ -238,6 +238,7 @@ void demux::process_sl_sch_pdu(srslte::slsch_pdu *pdu_msg)
           uint8_t *sdu_ptr = pdu_msg->get()->get_sdu_ptr();
           uint32_t sdu_len = pdu_msg->get()->get_payload_size();
 
+          /*
           // prepend SNR
           sdu_ptr -= 4;
           sdu_len += 4;
@@ -251,7 +252,7 @@ void demux::process_sl_sch_pdu(srslte::slsch_pdu *pdu_msg)
           sdu_ptr[0] = pdu_msg->SRC[0];
           sdu_ptr[1] = pdu_msg->SRC[1];
           sdu_ptr[2] = pdu_msg->SRC[2];
-
+          */ //disabled for testing purpose
           rlc->write_pdu_sl(pdu_msg->get()->get_sdu_lcid(), sdu_ptr, sdu_len);
 
           // printf("Delivering PDU for lcid=%d, %d bytes hex=", pdu_msg->get()->get_sdu_lcid(), pdu_msg->get()->get_payload_size());

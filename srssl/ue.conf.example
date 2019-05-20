@@ -25,17 +25,19 @@
 #                     Default is auto (yes for UHD, no for rest)
 #####################################################################
 [rf]
-dl_earfcn = 3400
+#dl_earfcn = 3400
+dl_freq = 2350e6
+ul_freq = 2350e6
 freq_offset = 0
-tx_gain = 80
-#rx_gain = 40
+tx_gain = 60
+rx_gain = 35
 
 #nof_rx_ant = 1
 #device_name = auto
-#device_args = auto
+device_args = type=b200
 #time_adv_nsamples = auto
-#burst_preamble_us = auto
-#continuous_tx     = auto
+#burst_preamble_us = 10
+#continuous_tx     = no
 
 
 #####################################################################
@@ -77,7 +79,7 @@ nas_filename = /tmp/nas.pcap
 #                If set to negative, a single log file will be created.
 #####################################################################
 [log]
-all_level = info
+all_level = none
 phy_lib_level = none
 all_hex_limit = 32
 filename = /tmp/ue.log

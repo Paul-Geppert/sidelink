@@ -1,2 +1,0 @@
-/usr/bin/ar qc libsrssl_upper.a  CMakeFiles/srssl_upper.dir/gw.cc.o CMakeFiles/srssl_upper.dir/nas.cc.o CMakeFiles/srssl_upper.dir/rrc.cc.o CMakeFiles/srssl_upper.dir/usim_base.cc.o CMakeFiles/srssl_upper.dir/usim.cc.o CMakeFiles/srssl_upper.dir/rest.cc.o
-/usr/bin/ranlib libsrssl_upper.a

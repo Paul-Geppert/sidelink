@@ -266,7 +266,7 @@ srslte::error_t gw::init_if(char *err_str)
     return(srslte::ERROR_ALREADY_STARTED);
   }
 
-  char dev[IFNAMSIZ] = "tun_srsue";
+  char dev[IFNAMSIZ] = "tun_srssl";
 
   // Construct the TUN device
   tun_fd = open("/dev/net/tun", O_RDWR);
@@ -370,9 +370,10 @@ void gw::run_thread()
           while(run_enable && !pdcp->is_drb_enabled(cfg.lcid) && attach_wait < ATTACH_WAIT_TOUT) {
             if (!attach_wait) {
               gw_log->info("LCID=%d not active, requesting NAS attach (%d/%d)\n", cfg.lcid, attach_wait, ATTACH_WAIT_TOUT);
-              if (!nas->attach_request()) {
-                gw_log->warning("Could not re-establish the connection\n");
-              }
+          // sidelink hack to not trigger cell_search 15.04.2019 jp
+          //    if (!nas->attach_request()) {
+          //      gw_log->warning("Could not re-establish the connection\n");
+          //    }
             }
             usleep(100000);
             attach_wait++;

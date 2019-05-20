@@ -112,6 +112,7 @@ class gw_interface_rrc
 {
 public:
   virtual void add_mch_port(uint32_t lcid, uint32_t port) = 0;
+  virtual srslte::error_t setup_if_addr(uint32_t ip_addr, char *err_str) = 0;
 };
 
 // GW interface for PDCP

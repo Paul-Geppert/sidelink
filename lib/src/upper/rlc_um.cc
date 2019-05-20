@@ -433,7 +433,7 @@ void rlc_um::handle_data_pdu(uint8_t *payload, uint32_t nof_bytes)
   {
     log->info("%s SN: %d outside rx window [%d:%d] - discarding\n",
               rb_name().c_str(), header.sn, vr_ur, vr_uh);
-    return;
+    //return;
   }
   it = rx_window.find(header.sn);
   if(rx_window.end() != it)

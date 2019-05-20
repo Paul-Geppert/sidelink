@@ -282,7 +282,7 @@ int srslte_ue_sl_cellsearch_scan_N_id_2(srslte_ue_sl_cellsearch_t * q,
   uint32_t nof_detected_frames = 0; 
   uint32_t nof_scanned_frames = 0;
 
-  printf("srslte_ue_sl_cellsearch_scan_N_id_2 for nid: %d\n", N_id_2);
+  // printf("srslte_ue_sl_cellsearch_scan_N_id_2 for nid: %d\n", N_id_2);
 
   if (q != NULL) 
   {

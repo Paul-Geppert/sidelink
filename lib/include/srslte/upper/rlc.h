@@ -125,9 +125,9 @@ private:
   bool valid_lcid_mrb(uint32_t lcid);
 
   // class to send/recv pdus from mac
-  class tcp_process : public thread {
+  class udp_process : public thread {
   public: 
-    tcp_process();
+    udp_process();
     void notify();
     void stop();
     int get_packet(uint8_t *p_, uint32_t len_);
@@ -147,7 +147,7 @@ private:
     int32_t recv_len;
   };
 
-  tcp_process tcp_process_thread;
+  udp_process udp_process_thread;
 };
 
 } // namespace srsue

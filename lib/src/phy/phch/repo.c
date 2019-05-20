@@ -164,8 +164,6 @@ void srslte_repo_decode_frl(srslte_repo_t *q, srslte_ra_sl_sci_t *sci) {
   sci->frl_L_subCH = L_subCH;
   sci->frl_n_subCH = n_subCH;
 
-  printf("srslte_repo_decode_frl: n: %d L: %d\n", sci->frl_n_subCH, sci->frl_L_subCH);
-
 }
 
 
@@ -219,15 +217,17 @@ int srslte_repo_sci_decode(srslte_repo_t *q, uint8_t *sci_packed, srslte_ra_sl_s
     sci_packed++;
   }
 
-  printf("SCI-1 decoded: prio: %d rr: 0x%x frl: 0x%x gap: %d mcs: %x rti: %d\n",
-          sci->priority,
-          sci->resource_reservation,
-          sci->frl,
-          sci->time_gap,
-          sci->mcs.idx,
-          sci->rti);
-
   srslte_repo_decode_frl(q, sci);
+
+  // printf("SCI-1 decoded: prio: %d rr: 0x%x frl: 0x%x(n: %d L: %d) gap: %d mcs: %x rti: %d\n",
+  //         sci->priority,
+  //         sci->resource_reservation,
+  //         sci->frl,
+  //         sci->frl_n_subCH,
+  //         sci->frl_L_subCH,
+  //         sci->time_gap,
+  //         sci->mcs.idx,
+  //         sci->rti);
 
   // @todo: check if prb size fulfills 2^a2 * 3^a3 * 5^a5 equation
   if(!srslte_dft_precoding_valid_prb(q->rp.sizeSubchannel_r14 * sci->frl_L_subCH - 2)) {

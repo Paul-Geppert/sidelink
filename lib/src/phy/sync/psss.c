@@ -470,7 +470,7 @@ static int srslte_psss_compute_peak_sidelobe_pos2(float *conv_output, uint32_t c
   }
   int sl_right = pl_ub+srslte_vec_max_fi(&conv_output[pl_ub], sl_distance_right);
 
-  printf("Seachring lobe in %d %d -> %d \n", pl_ub, sl_distance_right, sl_right);
+  // printf("Searching lobe in %d %d -> %d \n", pl_ub, sl_distance_right, sl_right);
 
   // Find end of left peak lobe to the left
   int pl_lb;
@@ -486,8 +486,7 @@ static int srslte_psss_compute_peak_sidelobe_pos2(float *conv_output, uint32_t c
   int sl_distance_left = pl_lb;
   int sl_left = srslte_vec_max_fi(conv_output, sl_distance_left);
 
-  printf("Seachring lobe in %d %d ->  %d\n", 0, sl_distance_left, sl_left);
-
+  // printf("Searching lobe in %d %d ->  %d\n", 0, sl_distance_left, sl_left);
 
   // Find end of right peak lobe to the left
   if (peak_right > 2) {
@@ -511,7 +510,7 @@ static int srslte_psss_compute_peak_sidelobe_pos2(float *conv_output, uint32_t c
   }
   int sl_middle = pl_ub+srslte_vec_max_fi(&conv_output[pl_ub], sl_distance_middle);
 
-  printf("Seachring lobe in %d %d -> %d\n", pl_ub, sl_distance_middle, sl_middle);
+  // printf("Searching lobe in %d %d -> %d\n", pl_ub, sl_distance_middle, sl_middle);
 
   // get highest peak
   if(conv_output[sl_right] > conv_output[sl_left]){
@@ -625,11 +624,11 @@ int srslte_psss_find_psss(srslte_psss_t *q, const cf_t *input, float *corr_peak_
       // i assume we are in find operation, so we are looking for two peaks
       int next_peak = srslte_psss_compute_peak_sidelobe_pos(q->conv_output_abs, corr_peak_pos, conv_output_len);
 
-      printf("Peak pos is %d with value %f\n", corr_peak_pos, q->conv_output_abs[corr_peak_pos]);
-      printf("\t next Peak pos is %d with value %f\n", next_peak, q->conv_output_abs[next_peak]);
+      // printf("Peak pos is %d with value %f\n", corr_peak_pos, q->conv_output_abs[corr_peak_pos]);
+      // printf("\t next Peak pos is %d with value %f\n", next_peak, q->conv_output_abs[next_peak]);
 
       if(abs(abs(corr_peak_pos - next_peak) - (q->fft_size + SRSLTE_CP_LEN((q->fft_size),SRSLTE_CP_NORM_LEN))) > 5){
-        printf("PSSS peaks are too far apart, no PSSS detected.\n");
+        // printf("PSSS peaks are too far apart, no PSSS detected.\n");
         *corr_peak_value = 0;
         return 0;
       } 

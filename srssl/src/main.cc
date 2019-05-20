@@ -606,6 +606,10 @@ int main(int argc, char *argv[])
       port = 4321;
       mbms_service_start = true;
     }
+    // try to setup bearer through rrc
+    uint32_t lcid = 3;
+    ue->add_sidelink_drb(lcid);
+
   }
   int cnt=0;
   while (running) {
