@@ -56,47 +56,72 @@ actual build
 ```
 mkdir build
 cd build
-cmake ../
+cmake -DUSE_LTE_RATES=y ../
 make
 ```
 
 Execution Instructions
 ----------------------
 
-You need to modify the start.sh file to adapt to your local SDR configuration.
-The script assumes a locally connected B210 via USB.
+After building, the srssl/ue.conf.example can be modified to your needs.
+Setting frequency, gain values and other options. The default configuration is for a B210 locally connected via USB.
 
 Easy start of the "master" node just use the start.sh script in the main folder.
-
-There are various configuration options. Looking into the start.sh in the main directory can help to understand.
-
-* --rf.device_args "type=b200" # UHD device arguments
-* --log.all_level "info" # setting the log-level
-* --rf.continuous_tx "no"  # needed for TDD operation
-* --rf.dl_freq 2350000000 # downlink frequency set to 2350 MHz
-* --rf.ul_freq 2350000000 # uplink frequency set to 2350 MHz
-* --expert.phy.sidelink_id 1 # this parameter sets the node ID to 1 out of 4
-* --rf.rx_gain 40 # some rx_gain factor, depending on the hardware this can be also increased
-* --rf.tx_gain 30 # a tx_gain factor, depending on the hardware this can be increased
-* --rf.burst_preamble_us 10 # tuning parameter
-* --expert.phy.sidelink_master 1 # enables master_node operation so no cell_search is active
+Additionally you can use the start_client.sh script in the main folder for client mode operation with sidelink_id=2.
 
 Runntime information
 --------------------
 
 Restapi is attached to port 1300 + given expert.phy.sidelink_id i.e. 13001
+The stack generates a tunnel interface called tun_srssl with IP: 10.0.2.10+sidelink_id i.e. 10.0.2.11
+Any IP package is routed to air and can be decoded by any other node.
 
-Date Socket is client listening on port 2200 + given expert.phy.sidelink_id i.e. 22001
 
-Change TX/RX gain settings
+REST API
 --------------------------
+During runtime the REST API can be used to get status information and change settings.
 
+* Gain settings
+Readout:
 ```
-curl -X PUT -H "Content-Type: application/json" -d '{"rx_gain":4, "tx_gain":45}' localhost:13001/phy/gain
+curl -X GET localhost:13001/phy/gain
+```
+Example:
+```
+{"tx_gain":57.0,"rx_gain":41.0}
 ```
 
-send single test packet
-
+Set new values:
 ```
-echo "Hello From node2" | socat - UDP4-DATAGRAM:10.0.2.9:9015
+curl -X PUT -H "Content-Type: application/json" -d '{"rx_gain":60, "tx_gain":35}' localhost:13001/phy/gain
+```
+
+* Measurement data
+To get SNR values in db of differnt sidelink_id UEs and PSBCH use:
+```
+curl -X GET localhost:13001/phy/metrics
+```
+Example:
+```
+{"snr_psbch":8.4800424575805664,"snr_ue_0":0.0,"snr_ue_1":8.6331901550292969,"snr_ue_2":21.439271926879883,"snr_ue_3":0.0,"snr_ue_4":0.0}
+```
+This can be used for estimating the link quality and find optimal gain values. If the SNR is near 30db the RX may saturated and lower values make more sense.
+
+* Resource pool configuration
+We can change the physical layer resource pool configuration via REST API.
+Readout:
+```
+curl -X GET localhost:13001/phy/repo
+```
+
+Example:
+```
+{"numSubchannel_r14":10,"sizeSubchannel_r14":5,"sl_OffsetIndicator_r14":0,"sl_Subframe_r14_len":20,"startRB_PSCCH_Pool_r14":0,"startRB_Subchannel_r14":0}
+```
+
+The resource pool configuration should be the same on all nodes in the network, otherwise there will be an error information on stdout.
+
+Any field can be set independent or all at once. To set the resource pool configuration:
+```
+curl -X PUT -H "Content-Type: application/json" -d '{"numSubchannel_r14":10,"sizeSubchannel_r14":5,"sl_OffsetIndicator_r14":0,"sl_Subframe_r14_len":20,"startRB_PSCCH_Pool_r14":0,"startRB_Subchannel_r14":0}' localhost:13001/phy/repo
 ```
