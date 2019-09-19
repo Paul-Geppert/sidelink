@@ -314,19 +314,22 @@ uint32_t rlc::get_total_mch_buffer_state(uint32_t lcid)
 
 int rlc::read_pdu_sl(uint32_t lcid, uint8_t *payload, uint32_t nof_bytes)
 {
-  //dirty hack for testing
-  lcid = 3;
-   uint32_t ret = 0;
+  uint32_t ret = 0;
+
+  if(lcid==1) {
+    // read from socket and bypass rlc+ layers
+    return tcp_process_thread.get_packet(payload, nof_bytes);
+  }
 
   pthread_rwlock_rdlock(&rwlock);
   if (valid_lcid(lcid)) {
     ret = rlc_array.at(lcid)->read_pdu(payload, nof_bytes);
+  } else {
+    rlc_log->warning("LCID %d doesn't exist.\n", lcid);
   }
   pthread_rwlock_unlock(&rwlock);
 
   return ret;
-  
-  //return udp_process_thread.get_packet(payload, nof_bytes);
 }
 
 int rlc::read_pdu(uint32_t lcid, uint8_t *payload, uint32_t nof_bytes)
@@ -361,13 +364,21 @@ int rlc::read_pdu_mch(uint32_t lcid, uint8_t *payload, uint32_t nof_bytes)
 
 void rlc::write_pdu_sl(uint32_t lcid, uint8_t *payload, uint32_t nof_bytes)
 {
+  if(lcid==1) {
+    // write direct into socket and bypass rlc+ layers
+    pthread_rwlock_rdlock(&rwlock);
+    // make the hidden snr and sl id visible 
+    tcp_process_thread.send_packet(payload - 7, nof_bytes + 7);
+    pthread_rwlock_unlock(&rwlock);
+    return;
+  }
+
   pthread_rwlock_rdlock(&rwlock);
-  //dirty hack for testing
-  lcid = 3;
   if (valid_lcid(lcid)) {
     rlc_array.at(lcid)->write_pdu(payload, nof_bytes);
+  } else {
+    rlc_log->warning("LCID %d doesn't exist. Dropping PDU.\n", lcid);
   }
-  //tcp_process_thread.send_packet(payload, nof_bytes);
   pthread_rwlock_unlock(&rwlock);
 }
 
