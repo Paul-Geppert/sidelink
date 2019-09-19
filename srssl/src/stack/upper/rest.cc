@@ -122,19 +122,38 @@ static int rest_put_repo_cb (const struct _u_request * request, struct _u_respon
 
   char *jd = json_dumps(req, 0);
   printf("Received JSON: %s\n", jd);
+  free(jd);
 
   SL_CommResourcePoolV2X_r14 new_repo;
   memcpy(&new_repo, &_this->ue_repo.rp, sizeof(SL_CommResourcePoolV2X_r14));
 
-  // parse received repo
-  json_unpack(req, "{s?i,s?i,s?i,s?i,s?i,s?i,s?i}",
-              "numSubchannel_r14",      &new_repo.numSubchannel_r14,
-              "sizeSubchannel_r14",     &new_repo.sizeSubchannel_r14,
-              "sl_OffsetIndicator_r14", &new_repo.sl_OffsetIndicator_r14,
-              "sl_Subframe_r14_len",    &new_repo.sl_Subframe_r14_len,
-              "startRB_PSCCH_Pool_r14", &new_repo.startRB_PSCCH_Pool_r14,
-              "startRB_Subchannel_r14", &new_repo.startRB_Subchannel_r14,
-              "sizeSubchannel_r14",     &new_repo.sizeSubchannel_r14);
+  // check each possible entry of the json
+  // we do it this way, because the json_integer is larger than our uint8_t
+  json_t *value;
+
+  if((value = json_object_get(req,"numSubchannel_r14"))) {
+    new_repo.numSubchannel_r14 = (uint8_t)json_integer_value(value);
+  }
+
+  if((value = json_object_get(req,"sizeSubchannel_r14"))) {
+    new_repo.sizeSubchannel_r14 = (uint8_t)json_integer_value(value);
+  }
+
+  if((value = json_object_get(req,"sl_OffsetIndicator_r14"))) {
+    new_repo.sl_OffsetIndicator_r14 = (uint8_t)json_integer_value(value);
+  }
+
+  if((value = json_object_get(req,"sl_Subframe_r14_len"))) {
+    new_repo.sl_Subframe_r14_len = (uint8_t)json_integer_value(value);
+  }
+
+  if((value = json_object_get(req,"startRB_PSCCH_Pool_r14"))) {
+    new_repo.startRB_PSCCH_Pool_r14 = (uint8_t)json_integer_value(value);
+  }
+
+  if((value = json_object_get(req,"startRB_Subchannel_r14"))) {
+    new_repo.startRB_Subchannel_r14 = (uint8_t)json_integer_value(value);
+  }
 
   if((value = json_object_get(req, "pssch_fixed_i_mcs"))) {
     if(json_integer_value(value) <= 28) {
@@ -157,7 +176,6 @@ static int rest_put_repo_cb (const struct _u_request * request, struct _u_respon
   }
 
   // send current setting to user
-
   return rest_get_repo_cb(request, response, user_data);
 }
 
