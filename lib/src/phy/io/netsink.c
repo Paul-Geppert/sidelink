@@ -81,7 +81,6 @@ int srslte_netsink_init(srslte_netsink_t *q, const char *address, uint16_t port,
   q->servaddr.sin_port=htons(port);
   q->connected = false;
   q->type = type;
-  bind(q->sockfd,(struct sockaddr*)&q->servaddr,sizeof(q->servaddr));
 
   return 0;
 }

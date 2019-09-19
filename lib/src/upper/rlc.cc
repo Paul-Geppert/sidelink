@@ -100,7 +100,7 @@ void rlc::init(srsue::pdcp_interface_rlc* pdcp_,
 {
 
   rlc::init(pdcp_, rrc_, mac_timers_, lcid_);
-  // udp_process_thread.init(port);
+  tcp_process_thread.init(port);
 }
 
 void rlc::reset_metrics() 
@@ -123,7 +123,7 @@ void rlc::stop()
   for (rlc_map_t::iterator it = rlc_array_mrb.begin(); it != rlc_array_mrb.end(); ++it) {
     it->second->stop();
   }
-  // udp_process_thread.stop();
+  tcp_process_thread.stop();
   pthread_rwlock_unlock(&rwlock);
 }
 
@@ -678,17 +678,17 @@ bool rlc::valid_lcid_mrb(uint32_t lcid)
  * udp socket class implementation
  * *****************************/
 
-rlc::udp_process::udp_process(void) : thread("rlc::udp_proc") {
+rlc::tcp_process::tcp_process(void) : thread("rlc::tcp_proc") {
   pthread_mutex_init(&mutex, NULL);
   pthread_cond_init(&cvar, NULL);
   have_data = false; 
 }
 
-void rlc::udp_process::init(int net_port) {
+void rlc::tcp_process::init(int net_port) {
   // mac_unit = mac_unit_;
 
-  printf("UDP: setting up as server on port %d\n", net_port);
-  if (srslte_netsink_init(&net_source, "127.0.0.1", net_port, SRSLTE_NETSINK_UDP)) {
+  printf("TCP: Looking for server on port %d\n", net_port);
+  if (srslte_netsink_init(&net_source, "127.0.0.1", net_port, SRSLTE_NETSINK_TCP)) {
     fprintf(stderr, "Error source as server\n");
     exit(-1);
   }
@@ -697,7 +697,7 @@ void rlc::udp_process::init(int net_port) {
 }
 
 
-void rlc::udp_process::stop()
+void rlc::tcp_process::stop()
 {
   pthread_mutex_lock(&mutex);
   running = false; 
@@ -707,7 +707,7 @@ void rlc::udp_process::stop()
   wait_thread_finish();
 }
 
-void rlc::udp_process::notify()
+void rlc::tcp_process::notify()
 {
   pthread_mutex_lock(&mutex);
   have_data = true; 
@@ -715,7 +715,7 @@ void rlc::udp_process::notify()
   pthread_mutex_unlock(&mutex);
 }
 
-int rlc::udp_process::get_packet(uint8_t *p_, uint32_t len_) {
+int rlc::tcp_process::get_packet(uint8_t *p_, uint32_t len_) {
   if(recv_len > 0) {
     if((int32_t)len_ > recv_len) {
       printf("MAC requested %d bytes but RLC has only %d\n", len_, recv_len);
@@ -729,13 +729,13 @@ int rlc::udp_process::get_packet(uint8_t *p_, uint32_t len_) {
 }
 
 // @todo: only copy buffer and let it the task send out
-void rlc::udp_process::send_packet(uint8_t *p_, uint32_t len_) {
+void rlc::tcp_process::send_packet(uint8_t *p_, uint32_t len_) {
   pthread_mutex_lock(&mutex);
   srslte_netsink_write(&net_source, p_, len_);
   pthread_mutex_unlock(&mutex);
 }
 
-void rlc::udp_process::run_thread()
+void rlc::tcp_process::run_thread()
 {
   running = true; 
   while(running) {
@@ -745,7 +745,7 @@ void rlc::udp_process::run_thread()
     if(recv_len <= 0) {
       int b = srslte_netsink_read( &net_source, recv_buffer, 100);
       if(b > 0) {
-        // printf("udp_process: got %d bytes\n", b);
+        // printf("tcp_process: got %d bytes\n", b);
         recv_len = b;
 
       }
