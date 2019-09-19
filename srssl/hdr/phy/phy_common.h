@@ -105,6 +105,7 @@ public:
   // public repo to be accessible by workers and rest api callbacks
   srslte_repo_t ue_repo;
   float         snr_pssch_per_ue[5];
+  float         rsrp_pssch_per_ue[5];
   float         snr_psbch;
   float         rsrp_psbch;
 

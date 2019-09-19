@@ -68,9 +68,14 @@ rest g_restapi;
 static int rest_get_metrics (const struct _u_request * request, struct _u_response * response, void * user_data) {
   phy_common * _this = (phy_common *)user_data;
 
-  json_t * json_body = json_pack("{sfsfsfsfsfsfsf}",
+  json_t * json_body = json_pack("{sfsfsfsfsfsfsfsfsfsfsfsf}",
                                   "snr_psbch", _this->snr_psbch,
                                   "rsrp_psbch", _this->rsrp_psbch,
+                                  "rsrp_ue_0", _this->rsrp_pssch_per_ue[0],
+                                  "rsrp_ue_1", _this->rsrp_pssch_per_ue[1],
+                                  "rsrp_ue_2", _this->rsrp_pssch_per_ue[2],
+                                  "rsrp_ue_3", _this->rsrp_pssch_per_ue[3],
+                                  "rsrp_ue_4", _this->rsrp_pssch_per_ue[4],
                                   "snr_ue_0", _this->snr_pssch_per_ue[0],
                                   "snr_ue_1", _this->snr_pssch_per_ue[1],
                                   "snr_ue_2", _this->snr_pssch_per_ue[2],
@@ -78,7 +83,7 @@ static int rest_get_metrics (const struct _u_request * request, struct _u_respon
                                   "snr_ue_4", _this->snr_pssch_per_ue[4]);
                                   
 
-  char *resp = json_dumps(json_body, JSON_REAL_PRECISION(2));
+  char *resp = json_dumps(json_body, JSON_REAL_PRECISION(3));
   ulfius_set_string_body_response(response, 200, resp);
 
   free(resp);
@@ -271,7 +276,10 @@ static int rest_get_SPS_rssi(const struct _u_request* request, struct _u_respons
     json_array_append_new(arr_sps_rssi, json_real(_this->inst_sps_rssi[i]));
   }
 
-  char *resp = json_dumps(arr_sps_rssi, JSON_REAL_PRECISION(2));
+  // this allows for cross origin access for a possible browser config interface
+  ulfius_add_header_to_response(response, "Access-Control-Allow-Origin", "*");
+
+  char *resp = json_dumps(arr_sps_rssi, JSON_REAL_PRECISION(3));
   ulfius_set_string_body_response(response, 200, resp);
 
   free(resp);

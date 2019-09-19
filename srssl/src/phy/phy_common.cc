@@ -98,6 +98,7 @@ phy_common::phy_common(uint32_t max_workers) : tx_sem(max_workers)
   sync_metrics_count = 0;
 
   ZERO_OBJECT(snr_pssch_per_ue);
+  ZERO_OBJECT(rsrp_pssch_per_ue);
   ZERO_OBJECT(ue_repo);
   snr_psbch = 0;
   rsrp_psbch = 0.0;

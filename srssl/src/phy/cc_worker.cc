@@ -749,6 +749,7 @@ bool cc_worker::work_sl_rx()
       
       // calculate snr for possibly decoded pssch
       float snr = 10*log10(ue_sl.chest.pilot_power / ue_sl.chest.noise_estimate);
+      float rsrp = 10*log10(ue_sl.chest.pilot_power) + 30;
 
       int ue_id = srslte_repo_get_t_SL_k(&phy->ue_repo, tti % 10240);
 
@@ -759,6 +760,7 @@ bool cc_worker::work_sl_rx()
         // calulate exponential moving average
         ue_id = ue_id % 5;
         phy->snr_pssch_per_ue[ue_id] = SRSLTE_VEC_EMA(snr, phy->snr_pssch_per_ue[ue_id], 0.1);
+        phy->rsrp_pssch_per_ue[ue_id] = SRSLTE_VEC_EMA(rsrp, phy->rsrp_pssch_per_ue[ue_id], 0.1);
         //printf("moving snr[%d]: %f\n", ue_id, phy->snr_pssch_per_ue[ue_id]);
 
         printf("Current SNR: %f (EMA: %f) RSRP: %f (EMA: %f) for ue_id %d\n",
