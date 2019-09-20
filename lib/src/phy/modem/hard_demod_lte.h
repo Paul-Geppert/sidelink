@@ -1,12 +1,31 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
- *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsLTE library.
+ * This file is part of srsLTE.
  *
  * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -28,10 +47,17 @@
 /* Assume perfect amplitude and phase alignment.
  *  Check threshold values for real case
  *  or implement dynamic threshold adjustent as a function of received symbol amplitudes */
-#define QAM16_THRESHOLD    2/sqrt(10)
-#define QAM64_THRESHOLD_1  2/sqrt(42)
-#define QAM64_THRESHOLD_2  4/sqrt(42)
-#define QAM64_THRESHOLD_3  6/sqrt(42)
+#define QAM16_THRESHOLD (2 / sqrtf(10))
+#define QAM64_THRESHOLD_1 (2 / sqrtf(42))
+#define QAM64_THRESHOLD_2 (4 / sqrtf(42))
+#define QAM64_THRESHOLD_3 (6 / sqrtf(42))
+#define QAM256_THRESHOLD_1 (2 / sqrtf(170))
+#define QAM256_THRESHOLD_2 (4 / sqrtf(170))
+#define QAM256_THRESHOLD_3 (6 / sqrtf(170))
+#define QAM256_THRESHOLD_4 (8 / sqrtf(170))
+#define QAM256_THRESHOLD_5 (10 / sqrtf(170))
+#define QAM256_THRESHOLD_6 (12 / sqrtf(170))
+#define QAM256_THRESHOLD_7 (14 / sqrtf(170))
 
 void hard_bpsk_demod(const cf_t* in, 
                      uint8_t* out, 
@@ -48,3 +74,5 @@ void hard_qam16_demod(const cf_t* in,
 void hard_qam64_demod(const cf_t* in, 
                                  uint8_t* out, 
                                  uint32_t N);
+
+void hard_qam256_demod(const cf_t* in, uint8_t* out, uint32_t N);

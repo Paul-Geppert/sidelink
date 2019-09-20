@@ -1,12 +1,31 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
- *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsLTE library.
+ * This file is part of srsLTE.
  *
  * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -59,7 +78,7 @@ static void* thread_gain_fcn(void *h) {
   pthread_setname_np(pthread_self(), "t_gain_fcn");
   srslte_rf_t* rf = (srslte_rf_t*) h;
   
-  while(1) {
+  while(rf->thread_gain_run) {
     pthread_mutex_lock(&rf->mutex);
     while(rf->cur_rx_gain == rf->new_rx_gain) 
     {
@@ -90,8 +109,10 @@ int srslte_rf_start_gain_thread(srslte_rf_t *rf, bool tx_gain_same_rx) {
   if (pthread_cond_init(&rf->cond, NULL)) {
     return -1;
   }
+  rf->thread_gain_run = true;
   if (pthread_create(&rf->thread_gain, NULL, thread_gain_fcn, rf)) {
     perror("pthread_create");
+    rf->thread_gain_run = false;
     return -1;
   }
   return 0;
@@ -102,6 +123,7 @@ const char* srslte_rf_get_devname(srslte_rf_t *rf) {
 }
 
 int srslte_rf_open_devname(srslte_rf_t *rf, char *devname, char *args, uint32_t nof_channels) {
+  rf->thread_gain_run = false;
   /* Try to open the device if name is provided */
   if (devname) {
     if (devname[0] != '\0') {
@@ -126,18 +148,9 @@ int srslte_rf_open_devname(srslte_rf_t *rf, char *devname, char *args, uint32_t 
     }
     i++;
   }
-  fprintf(stderr, "No compatible RF frontend found\n");
+  ERROR("No compatible RF frontend found\n");
   return -1; 
 }
-
-void srslte_rf_set_tx_cal(srslte_rf_t *rf, srslte_rf_cal_t *cal) {
-  return ((rf_dev_t*) rf->dev)->srslte_rf_set_tx_cal(rf->handler, cal);  
-}
-
-void srslte_rf_set_rx_cal(srslte_rf_t *rf, srslte_rf_cal_t *cal) {
-  return ((rf_dev_t*) rf->dev)->srslte_rf_set_rx_cal(rf->handler, cal);  
-}
-
 
 const char* srslte_rf_name(srslte_rf_t *rf) {
   return ((rf_dev_t*) rf->dev)->srslte_rf_devname(rf->handler); 
@@ -195,6 +208,12 @@ int srslte_rf_open_multi(srslte_rf_t *h, char *args, uint32_t nof_channels)
 
 int srslte_rf_close(srslte_rf_t *rf)
 {
+  // Stop gain thread
+  if (rf->thread_gain_run) {
+    pthread_cancel(rf->thread_gain);
+    pthread_join(rf->thread_gain, NULL);
+  }
+
   return ((rf_dev_t*) rf->dev)->srslte_rf_close(rf->handler);  
 }
 
@@ -236,10 +255,9 @@ srslte_rf_info_t *srslte_rf_get_info(srslte_rf_t *rf) {
   return ret;
 }
 
-
-double srslte_rf_set_rx_freq(srslte_rf_t *rf, double freq)
+double srslte_rf_set_rx_freq(srslte_rf_t* rf, uint32_t ch, double freq)
 {
-  return ((rf_dev_t*) rf->dev)->srslte_rf_set_rx_freq(rf->handler, freq);  
+  return ((rf_dev_t*)rf->dev)->srslte_rf_set_rx_freq(rf->handler, ch, freq);
 }
 
 
@@ -283,9 +301,9 @@ double srslte_rf_set_tx_srate(srslte_rf_t *rf, double freq)
   return ((rf_dev_t*) rf->dev)->srslte_rf_set_tx_srate(rf->handler, freq);  
 }
 
-double srslte_rf_set_tx_freq(srslte_rf_t *rf, double freq)
+double srslte_rf_set_tx_freq(srslte_rf_t* rf, uint32_t ch, double freq)
 {
-  return ((rf_dev_t*) rf->dev)->srslte_rf_set_tx_freq(rf->handler, freq);  
+  return ((rf_dev_t*)rf->dev)->srslte_rf_set_tx_freq(rf->handler, ch, freq);
 }
 
 void srslte_rf_get_time(srslte_rf_t *rf, time_t *secs, double *frac_secs) 
@@ -293,7 +311,19 @@ void srslte_rf_get_time(srslte_rf_t *rf, time_t *secs, double *frac_secs)
   return ((rf_dev_t*) rf->dev)->srslte_rf_get_time(rf->handler, secs, frac_secs);  
 }
 
-                   
+int srslte_rf_sync(srslte_rf_t* rf)
+{
+  int ret = SRSLTE_ERROR;
+
+  if (((rf_dev_t*)rf->dev)->srslte_rf_sync_pps) {
+    ((rf_dev_t*)rf->dev)->srslte_rf_sync_pps(rf->handler);
+
+    ret = SRSLTE_SUCCESS;
+  }
+
+  return ret;
+}
+
 int srslte_rf_send_timed3(srslte_rf_t *rf,
                      void *data,
                      int nsamples,

@@ -1,4 +1,28 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/**
  *
  * \section COPYRIGHT
  *
@@ -24,6 +48,7 @@
  *
  */
 
+#include "srslte/srslte.h"
 #include <complex.h>
 #include <math.h>
 #include <string.h>
@@ -65,6 +90,7 @@ int srslte_ue_sl_tx_init(srslte_ue_sl_tx_t *q,
     srslte_ofdm_set_freq_shift(&q->fft, 0.5);
     srslte_ofdm_set_normalize(&q->fft, true);
 
+    q->out_buffer = out_buffer;
     q->normalize_en = false; 
 
     if (srslte_cfo_init(&q->cfo, MAX_SFLEN)) {
@@ -98,7 +124,7 @@ int srslte_ue_sl_tx_init(srslte_ue_sl_tx_t *q,
       fprintf(stderr, "Error creating PUSCH object\n");
       goto clean_exit;
     }
-    if (srslte_pucch_init(&q->pucch)) {
+    if (srslte_pucch_init_ue(&q->pucch)) {
       fprintf(stderr, "Error creating PUSCH object\n");
       goto clean_exit;
     }
@@ -278,6 +304,8 @@ void srslte_ue_sl_tx_set_normalization(srslte_ue_sl_tx_t *q, bool enabled)
   q->normalize_en = enabled;
 }
 
+#if 0
+// (rl, merge_19_06) 
 /* Precalculate the PUSCH scramble sequences for a given RNTI. This function takes a while
  * to execute, so shall be called once the final C-RNTI has been allocated for the session.
  * For the connection procedure, use srslte_pusch_encode_rnti() or srslte_pusch_decode_rnti() functions 
@@ -369,6 +397,7 @@ static void pucch_encode_bits(srslte_uci_data_t *uci_data, srslte_pucch_format_t
     }
   }
 }
+#endif
 
 static float limit_norm_factor(srslte_ue_sl_tx_t *q, float norm_factor, cf_t *output_signal)
 {
@@ -389,6 +418,8 @@ float srslte_ue_sl_tx_get_last_amplitude(srslte_ue_sl_tx_t *q) {
   return q->last_amplitude;
 }
 
+#if 0
+// (rl, merge_19_06) 
 /* Choose PUCCH format as in Sec 10.1 of 36.213 and generate PUCCH signal 
  */
 int srslte_ue_sl_tx_pucch_encode(srslte_ue_sl_tx_t *q, srslte_uci_data_t uci_data,
@@ -635,6 +666,7 @@ float srslte_ue_sl_tx_pusch_power(srslte_ue_sl_tx_t *q, float PL, float p0_pream
          pusch_power, 10*log10(q->pusch_cfg.grant.L_prb), p0_pusch, alpha, PL);
   return SRSLTE_MIN(SRSLTE_PC_MAX, pusch_power);
 }
+#endif
 
 /* Returns the transmission power for PUCCH for this subframe as defined in Section 5.1.2 of 36.213 */
 float srslte_ue_sl_tx_pucch_power(srslte_ue_sl_tx_t *q, float PL, srslte_pucch_format_t format, uint32_t n_cqi, uint32_t n_harq) {
@@ -675,6 +707,8 @@ float srslte_ue_sl_tx_pucch_power(srslte_ue_sl_tx_t *q, float PL, srslte_pucch_f
   return pucch_power;
 }
 
+#if 0
+// (rl, merge_19_06) 
 /* Returns the transmission power for SRS for this subframe as defined in Section 5.1.3 of 36.213 */
 float srslte_ue_sl_tx_srs_power(srslte_ue_sl_tx_t *q, float PL) {
   float alpha = q->power_ctrl.alpha;
@@ -699,6 +733,7 @@ float srslte_ue_sl_tx_srs_power(srslte_ue_sl_tx_t *q, float PL) {
   
   return p_srs; 
 }
+#endif
 
 /* Returns 1 if a SR needs to be sent at current_tti given I_sr, as defined in Section 10.1 of 36.213 */
 int srslte_ue_sl_tx_sr_send_tti(uint32_t I_sr, uint32_t current_tti) {

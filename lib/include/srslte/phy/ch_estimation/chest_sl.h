@@ -1,4 +1,28 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/**
  *
  * \section COPYRIGHT
  *
@@ -49,6 +73,27 @@
 #include "srslte/phy/ch_estimation/refsignal_sl.h"
 #include "srslte/phy/common/phy_common.h"
 
+// @todo: update with required fields
+typedef struct SRSLTE_API {
+  // cf_t*    ce[SRSLTE_MAX_PORTS][SRSLTE_MAX_PORTS];
+  // uint32_t nof_re;
+  // float    noise_estimate;
+  // float    noise_estimate_dbm;
+  float    snr_db;
+  // float    snr_ant_port_db[SRSLTE_MAX_PORTS][SRSLTE_MAX_PORTS];
+  // float    rsrp;
+  // float    rsrp_dbm;
+  // float    rsrp_neigh;
+  // float    rsrp_port_dbm[SRSLTE_MAX_PORTS];
+  // float    rsrp_ant_port_dbm[SRSLTE_MAX_PORTS][SRSLTE_MAX_PORTS];
+  // float    rsrq;
+  // float    rsrq_db;
+  // float    rsrq_ant_port_db[SRSLTE_MAX_PORTS][SRSLTE_MAX_PORTS];
+  // float    rssi_dbm;
+  // float    cfo;
+  // float    sync_error;
+} srslte_chest_sl_res_t;
+
 // @todo: check which member can be removed from sidelink implementation
 typedef struct {
   srslte_cell_t cell; 
@@ -72,9 +117,12 @@ typedef struct {
 
   srslte_interp_linsrslte_vec_t srslte_interp_linvec; 
   
+  float s_rsrp[SRSLTE_MAX_PORTS][SRSLTE_MAX_PORTS]; 
+  float rsrp_corr[SRSLTE_MAX_PORTS][SRSLTE_MAX_PORTS]; 
   float pilot_power; 
   float noise_estimate;
-  
+
+  bool     rsrp_neighbour; 
 } srslte_chest_sl_t;
 
 SRSLTE_API int srslte_chest_sl_init(srslte_chest_sl_t *q, 
@@ -83,7 +131,9 @@ SRSLTE_API int srslte_chest_sl_init(srslte_chest_sl_t *q,
 SRSLTE_API int srslte_chest_sl_estimate_psbch(srslte_chest_sl_t *q,
                                               cf_t *input,
                                               cf_t *ce,
-                                              srslte_sl_mode_t sl_mode);
+                                              srslte_sl_mode_t sl_mode,
+                                              uint32_t port_id,
+                                              uint32_t rxant_id); 
 
 SRSLTE_API int srslte_chest_sl_estimate_pscch(srslte_chest_sl_t *q,
                                               cf_t *input,

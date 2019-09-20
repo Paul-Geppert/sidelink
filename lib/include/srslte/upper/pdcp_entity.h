@@ -1,19 +1,38 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
+ * This file is part of srsLTE.
  *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsUE library.
- *
- * srsUE is free software: you can redistribute it and/or modify
+ * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of
  * the License, or (at your option) any later version.
  *
- * srsUE is distributed in the hope that it will be useful,
+ * srsLTE is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
@@ -33,6 +52,7 @@
 #include "srslte/interfaces/ue_interfaces.h"
 #include "srslte/common/security.h"
 #include "srslte/common/threads.h"
+#include "pdcp_interface.h"
 
 
 namespace srslte {
@@ -59,10 +79,11 @@ static const char pdcp_d_c_text[PDCP_D_C_N_ITEMS][20] = {"Control PDU",
  * PDCP Entity interface
  * Common interface for all PDCP entities
  ***************************************************************************/
-class pdcp_entity
+class pdcp_entity : public pdcp_entity_interface
 {
 public:
   pdcp_entity();
+  ~pdcp_entity();
   void init(srsue::rlc_interface_pdcp     *rlc_,
             srsue::rrc_interface_pdcp     *rrc_,
             srsue::gw_interface_pdcp      *gw_,
@@ -75,59 +96,59 @@ public:
   bool is_active();
 
   // RRC interface
-  void write_sdu(byte_buffer_t *sdu);
-  void config_security(uint8_t *k_enc_,
-                       uint8_t *k_int_,
+  void     write_sdu(unique_byte_buffer_t sdu, bool blocking);
+  void config_security(uint8_t *k_rrc_enc_,
+                       uint8_t *k_rrc_int_,
+                       uint8_t *k_up_enc_,
                        CIPHERING_ALGORITHM_ID_ENUM cipher_algo_,
                        INTEGRITY_ALGORITHM_ID_ENUM integ_algo_);
   void enable_integrity();
   void enable_encryption();
+  uint32_t get_dl_count();
+  uint32_t get_ul_count();
 
   // RLC interface
-  void write_pdu(byte_buffer_t *pdu);
+  void write_pdu(unique_byte_buffer_t pdu);
 
 private:
-  byte_buffer_pool        *pool;
-  srslte::log             *log;
+  byte_buffer_pool* pool = byte_buffer_pool::get_instance();
+  srslte::log*      log  = nullptr;
 
-  srsue::rlc_interface_pdcp *rlc;
-  srsue::rrc_interface_pdcp *rrc;
-  srsue::gw_interface_pdcp  *gw;
+  srsue::rlc_interface_pdcp* rlc = nullptr;
+  srsue::rrc_interface_pdcp* rrc = nullptr;
+  srsue::gw_interface_pdcp*  gw  = nullptr;
 
-  bool                active;
-  uint32_t            lcid;
-  srslte_pdcp_config_t cfg;
-  uint8_t             sn_len_bytes;
-  bool                do_integrity;
-  bool                do_encryption;
+  bool                 active        = false;
+  uint32_t             lcid          = 0;
+  srslte_pdcp_config_t cfg           = {};
+  uint8_t              sn_len_bytes  = 0;
+  bool                 do_integrity  = false;
+  bool                 do_encryption = false;
 
-  uint32_t            rx_count;
-  uint32_t            tx_count;
-  uint8_t             k_enc[32];
-  uint8_t             k_int[32];
+  uint32_t rx_count      = 0;
+  uint32_t tx_count      = 0;
+  uint8_t  k_rrc_enc[32] = {};
+  uint8_t  k_rrc_int[32] = {};
+  uint8_t  k_up_enc[32]  = {};
 
-  CIPHERING_ALGORITHM_ID_ENUM cipher_algo;
-  INTEGRITY_ALGORITHM_ID_ENUM integ_algo;
+  uint32_t rx_hfn                    = 0;
+  uint32_t next_pdcp_rx_sn           = 0;
+  uint32_t reordering_window         = 0;
+  uint32_t last_submitted_pdcp_rx_sn = 0;
+  uint32_t maximum_pdcp_sn           = 0;
 
-  void integrity_generate(uint8_t  *msg,
-                          uint32_t  msg_len,
-                          uint8_t  *mac);
+  CIPHERING_ALGORITHM_ID_ENUM cipher_algo = CIPHERING_ALGORITHM_ID_EEA0;
+  INTEGRITY_ALGORITHM_ID_ENUM integ_algo  = INTEGRITY_ALGORITHM_ID_EIA0;
 
-  bool integrity_verify(uint8_t  *msg,
-                        uint32_t  count,
-                        uint32_t  msg_len,
-                        uint8_t  *mac);
+  pthread_mutex_t mutex;
 
-  void cipher_encrypt(uint8_t  *msg,
-                      uint32_t  msg_len,
-                      uint8_t  *ct);
+  void handle_um_drb_pdu(const srslte::unique_byte_buffer_t& pdu);
+  void handle_am_drb_pdu(const srslte::unique_byte_buffer_t& pdu);
 
-  void cipher_decrypt(uint8_t  *ct,
-                      uint32_t  count,
-                      uint32_t  ct_len,
-                      uint8_t  *msg);
-
-  uint8_t  get_bearer_id(uint8_t lcid);
+  void integrity_generate(uint8_t* msg, uint32_t msg_len, uint8_t* mac);
+  bool integrity_verify(uint8_t* msg, uint32_t count, uint32_t msg_len, uint8_t* mac);
+  void cipher_encrypt(uint8_t* msg, uint32_t msg_len, uint8_t* ct);
+  void cipher_decrypt(uint8_t* ct, uint32_t count, uint32_t ct_len, uint8_t* msg);
 };
 
 /****************************************************************************
@@ -144,6 +165,4 @@ void pdcp_pack_data_pdu_long_sn(uint32_t sn, byte_buffer_t *sdu);
 void pdcp_unpack_data_pdu_long_sn(byte_buffer_t *sdu, uint32_t *sn);
 
 } // namespace srslte
-
-
 #endif // SRSLTE_PDCP_ENTITY_H

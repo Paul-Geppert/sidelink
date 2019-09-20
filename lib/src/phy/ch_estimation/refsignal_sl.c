@@ -1,4 +1,28 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/**
  *
  * \section COPYRIGHT
  *
@@ -39,8 +63,6 @@
 #include "srslte/phy/dft/dft_precoding.h"
 
 
-
-
 uint32_t psbch_dmrs_symbol_mode4_slot0_cpnorm[2] = {4, 6};
 uint32_t psbch_dmrs_symbol_mode4_slot1_cpnorm[1] = {2};
 
@@ -48,8 +70,6 @@ uint32_t psbch_dmrs_symbol_mode4_slot1_cpnorm[1] = {2};
 uint32_t pscch_dmrs_symbol_mode4_slot0_cpnorm[2] = {2, 5};
 uint32_t pscch_dmrs_symbol_mode4_slot1_cpnorm[2] = {1, 4};
 
-
-/*  */
 
 /**
  * @brief Calculates alpha according to 9.8 and 5.5.2.1.1 of 36.211
@@ -287,10 +307,10 @@ int srslte_refsignal_sl_dmrs_psbch_get(srslte_refsignal_sl_t *q, srslte_sl_mode_
 static void compute_r(srslte_refsignal_sl_t *q, uint32_t nof_prb, uint32_t ns, uint32_t delta_ss) {
   // Get group hopping number u 
   uint32_t f_gh=0; 
-  if (q->pusch_cfg.group_hopping_en) {
-    fprintf(stderr, "Group hopping is not defined in sidelink.\n");
-    f_gh = q->f_gh[ns];
-  }
+  // if (q->pusch_cfg.group_hopping_en) {
+  //   fprintf(stderr, "Group hopping is not defined in sidelink.\n");
+  //   f_gh = q->f_gh[ns];
+  // }
 
   // f_ss changes with channel type table 9.8-1/2/3 in 36.211
   uint32_t f_ss = (q->cell.id / 16) % 30; // PSBCH
@@ -302,9 +322,9 @@ static void compute_r(srslte_refsignal_sl_t *q, uint32_t nof_prb, uint32_t ns, u
   // in sidelink sequence hoppping is disabled for all physical channels
   uint32_t v = 0;
 
-  if(q->pusch_cfg.sequence_hopping_en) {
-    fprintf(stderr, "Sequence hopping is not defined in sidelink.\n");
-  }
+  // if(q->pusch_cfg.sequence_hopping_en) {
+  //   fprintf(stderr, "Sequence hopping is not defined in sidelink.\n");
+  // }
 
   // Compute signal argument 
   srslte_refsignal_compute_r_uv_arg(q->tmp_arg, nof_prb, u, v);
@@ -366,9 +386,9 @@ int srslte_refsignal_sl_dmrs_psxch_get(srslte_refsignal_sl_t *q, srslte_sl_mode_
 static void compute_r_pscch(srslte_refsignal_sl_t *q, uint32_t nof_prb) {
   // Get group hopping number u 
   uint32_t f_gh=0; 
-  if (q->pusch_cfg.group_hopping_en) {
-    fprintf(stderr, "Group hopping is not defined in sidelink.\n");
-  }
+  // if (q->pusch_cfg.group_hopping_en) {
+  //   fprintf(stderr, "Group hopping is not defined in sidelink.\n");
+  // }
 
   // f_ss changes with channel type table 9.8-1/2/3 in 36.211
   uint32_t f_ss = 8; // PSBCH
@@ -380,9 +400,9 @@ static void compute_r_pscch(srslte_refsignal_sl_t *q, uint32_t nof_prb) {
   // in sidelink sequence hoppping is disabled for all physical channels
   uint32_t v = 0;
 
-  if(q->pusch_cfg.sequence_hopping_en) {
-    fprintf(stderr, "Sequence hopping is not defined in sidelink.\n");
-  }
+  // if(q->pusch_cfg.sequence_hopping_en) {
+  //   fprintf(stderr, "Sequence hopping is not defined in sidelink.\n");
+  // }
 
   // Compute signal argument 
   srslte_refsignal_compute_r_uv_arg(q->tmp_arg, nof_prb, u, v);
@@ -410,7 +430,8 @@ int srslte_refsignal_sl_dmrs_psbch_gen(srslte_refsignal_sl_t *q, uint32_t nof_pr
   // todo: nof_prb must be 6 !?
 
   int ret = SRSLTE_ERROR_INVALID_INPUTS;
-  if (srslte_refsignal_dmrs_pusch_cfg_isvalid(q, &q->pusch_cfg, nof_prb)) {
+  //if (srslte_refsignal_dmrs_pusch_cfg_isvalid(q, &q->pusch_cfg, nof_prb)) {
+  {
     ret = SRSLTE_ERROR;
 
     // @todo: mode should be stored in some struct
@@ -424,7 +445,8 @@ int srslte_refsignal_sl_dmrs_psbch_gen(srslte_refsignal_sl_t *q, uint32_t nof_pr
 
       for(uint32_t m=0; m<N_rs; m++) {
 
-        compute_r(q, nof_prb, ns, q->pusch_cfg.delta_ss);
+        //compute_r(q, nof_prb, ns, q->pusch_cfg.delta_ss);
+        compute_r(q, nof_prb, ns, NULL);
         
         // Add cyclic prefix alpha
         float alpha = psbch_alpha(q);
@@ -466,7 +488,8 @@ int srslte_refsignal_sl_dmrs_pscch_gen(srslte_refsignal_sl_t *q, uint32_t nof_pr
   // todo: nof_prb must be 2 !?
 
   int ret = SRSLTE_ERROR_INVALID_INPUTS;
-  if (srslte_refsignal_dmrs_pusch_cfg_isvalid(q, &q->pusch_cfg, nof_prb)) {
+  //if (srslte_refsignal_dmrs_pusch_cfg_isvalid(q, &q->pusch_cfg, nof_prb)) {
+  {
     ret = SRSLTE_ERROR;
 
     // @todo: mode should be stored in some struct
@@ -573,9 +596,9 @@ void compute_r_pssch(srslte_refsignal_sl_t *q, uint32_t nof_prb, uint32_t ns, ui
   // in sidelink sequence hoppping is disabled for all physical channels
   uint32_t v = 0;
 
-  if(q->pusch_cfg.sequence_hopping_en) {
-    fprintf(stderr, "Sequence hopping is not defined in sidelink.\n");
-  }
+  // if(q->pusch_cfg.sequence_hopping_en) {
+  //   fprintf(stderr, "Sequence hopping is not defined in sidelink.\n");
+  // }
 
   // Compute signal argument 
   srslte_refsignal_compute_r_uv_arg(q->tmp_arg, nof_prb, u, v);

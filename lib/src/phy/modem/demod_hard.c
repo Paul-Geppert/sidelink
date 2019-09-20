@@ -1,12 +1,31 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
- *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsLTE library.
+ * This file is part of srsLTE.
  *
  * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -23,7 +42,6 @@
  * and at http://www.gnu.org/licenses/.
  *
  */
-
 
 #include <stdlib.h>
 #include <strings.h>
@@ -44,7 +62,6 @@ int srslte_demod_hard_demodulate(srslte_demod_hard_t* q, cf_t* symbols, uint8_t 
 
   int nbits=-1;
   switch(q->mod) {
-  case SRSLTE_MOD_LAST:
   case SRSLTE_MOD_BPSK:
     hard_bpsk_demod(symbols,bits,nsymbols);
     nbits=nsymbols;
@@ -60,6 +77,10 @@ int srslte_demod_hard_demodulate(srslte_demod_hard_t* q, cf_t* symbols, uint8_t 
   case SRSLTE_MOD_64QAM:
     hard_qam64_demod(symbols,bits,nsymbols);
     nbits=nsymbols*6;
+    break;
+  case SRSLTE_MOD_256QAM:
+    hard_qam256_demod(symbols, bits, nsymbols);
+    nbits = nsymbols * 8;
     break;
   }
   return nbits;

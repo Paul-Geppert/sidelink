@@ -1,5 +1,5 @@
 #
-# Copyright 2013-2017 Software Radio Systems Limited
+# Copyright 2013-2019 Software Radio Systems Limited
 #
 # This file is part of srsLTE
 #
@@ -10,7 +10,7 @@
 #
 # srsLTE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU Affero General Public License for more details.
 #
 # A copy of the GNU Affero General Public License can be found in
@@ -28,6 +28,10 @@ add_test(logger_test logger_test)
 add_executable(msg_queue_test msg_queue_test.cc)
 target_link_libraries(msg_queue_test srslte_phy srslte_common ${CMAKE_THREAD_LIBS_INIT} ${Boost_LIBRARIES})
 add_test(msg_queue_test msg_queue_test)
+
+add_executable(test_eia1 test_eia1.cc)
+target_link_libraries(test_eia1 srslte_common srslte_phy ${CMAKE_THREAD_LIBS_INIT})
+add_test(test_eia1 test_eia1)
 
 add_executable(test_eea1 test_eea1.cc)
 target_link_libraries(test_eea1 srslte_common srslte_phy ${CMAKE_THREAD_LIBS_INIT})
@@ -48,3 +52,11 @@ add_executable(timeout_test timeout_test.cc)
 target_link_libraries(timeout_test srslte_phy ${CMAKE_THREAD_LIBS_INIT})
 
 add_executable(bcd_helpers_test bcd_helpers_test.cc)
+
+add_executable(pdu_test pdu_test.cc)
+target_link_libraries(pdu_test srslte_phy srslte_common ${CMAKE_THREAD_LIBS_INIT})
+add_test(pdu_test pdu_test)
+
+add_executable(slsch_pdu_cc slsch_pdu.cc)
+target_link_libraries(slsch_pdu_cc srslte_phy srslte_common)
+add_test(slsch_mac_pdu_loop slsch_pdu_cc)

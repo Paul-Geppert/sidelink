@@ -1,19 +1,38 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
+ * This file is part of srsLTE.
  *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsUE library.
- *
- * srsUE is free software: you can redistribute it and/or modify
+ * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of
  * the License, or (at your option) any later version.
  *
- * srsUE is distributed in the hope that it will be useful,
+ * srsLTE is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
@@ -35,7 +54,7 @@
 
 namespace srslte{
 
-log_filter::log_filter()
+log_filter::log_filter() : log()
 {
   do_tti      = false;
   time_src    = NULL;
@@ -43,12 +62,12 @@ log_filter::log_filter()
   logger_h    = NULL;
 }
 
-log_filter::log_filter(std::string layer)
+log_filter::log_filter(std::string layer) : log()
 {
   do_tti      = false;
   time_src    = NULL;
   time_format = TIME;
-  init(layer, &def_logger_stdout, tti);
+  init(layer, &def_logger_stdout, do_tti);
 }
 
 log_filter::log_filter(std::string layer, logger *logger_, bool tti)
@@ -57,6 +76,10 @@ log_filter::log_filter(std::string layer, logger *logger_, bool tti)
   time_src    = NULL;
   time_format = TIME;
   init(layer, logger_, tti);
+}
+
+log_filter::~log_filter()
+{
 }
 
 void log_filter::init(std::string layer, logger *logger_, bool tti)
@@ -141,6 +164,7 @@ void log_filter::console(const char * message, ...) {
   va_start(args, message);
   if(vasprintf(&args_msg, message, args) > 0)
     printf("%s",args_msg); // Print directly to stdout
+  fflush(stdout);
   va_end(args);
   free(args_msg);
 }

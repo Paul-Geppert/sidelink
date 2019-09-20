@@ -1,12 +1,31 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
- *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsLTE library.
+ * This file is part of srsLTE.
  *
  * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -166,8 +185,13 @@ static inline void srslte_mat_2x2_mmse_csi_simd(simd_cf_t y0,
   simd_cf_t _noise_estimate;
   simd_f_t _norm = srslte_simd_f_set1(norm);
 
+#if HAVE_NEON
+  _noise_estimate.val[0] = srslte_simd_f_set1(noise_estimate);
+  _noise_estimate.val[1] = srslte_simd_f_zero();
+#else /* HAVE_NEON */
   _noise_estimate.re = srslte_simd_f_set1(noise_estimate);
   _noise_estimate.im = srslte_simd_f_zero();
+#endif /* HAVE_NEON */
 
   /* 1. A = H' x H + No*/
   simd_cf_t a00 =

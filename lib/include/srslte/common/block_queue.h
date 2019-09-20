@@ -1,19 +1,38 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
+ * This file is part of srsLTE.
  *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsUE library.
- *
- * srsUE is free software: you can redistribute it and/or modify
+ * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of
  * the License, or (at your option) any later version.
  *
- * srsUE is distributed in the hope that it will be useful,
+ * srsLTE is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
@@ -23,7 +42,6 @@
  * and at http://www.gnu.org/licenses/.
  *
  */
-
 
 /******************************************************************************
  *  File:         block_queue.h
@@ -55,15 +73,16 @@ public:
   // Callback functions for mutexed operations inside pop/push methods
   class call_mutexed_itf {
   public:
-    virtual void popping(myobj obj) = 0;
-    virtual void pushing(myobj obj) = 0;
+    virtual void popping(const myobj& obj) = 0;
+    virtual void pushing(const myobj& obj) = 0;
   };
 
-  block_queue<myobj>(int capacity = -1) {
+  explicit block_queue<myobj>(int capacity_ = -1)
+  {
     pthread_mutex_init(&mutex, NULL);
     pthread_cond_init(&cv_empty, NULL);
     pthread_cond_init(&cv_full, NULL);
-    this->capacity = capacity;
+    capacity         = capacity_;
     mutexed_callback = NULL;
     enable = true;
     num_threads = 0;
@@ -99,17 +118,20 @@ public:
     push_(value, true);
   }
 
+  void push(myobj&& value) { push_(std::move(value), true); }
+
   bool try_push(const myobj& value) {
     return push_(value, false);
   }
+
+  std::pair<bool, myobj> try_push(myobj&& value) { return push_(std::move(value), false); }
 
   bool try_pop(myobj *value) {
     return pop_(value, false);
   }
 
   myobj wait_pop() { // blocking pop
-    myobj value;
-    bzero(&value, sizeof(myobj));
+    myobj value = myobj();
     pop_(&value, true);
     return value;
   }
@@ -122,13 +144,11 @@ public:
   }
 
   void clear() { // remove all items
-    myobj item;
+    myobj *item = NULL;
     while (try_pop(item));
   }
 
-  myobj front() {
-    return q.front();
-  }
+  const myobj& front() const { return q.front(); }
 
   size_t size() {
     return q.size();
@@ -153,13 +173,13 @@ private:
       goto exit;
     }
     if (value) {
-      *value = q.front();
-      q.pop();
+      *value = std::move(q.front());
     }
-    ret = true;
     if (mutexed_callback) {
-      mutexed_callback->popping(*value);
+      mutexed_callback->popping(*value); // FIXME: Value might be null!
     }
+    q.pop();
+    ret = true;
     pthread_cond_signal(&cv_full);
   exit:
     num_threads--;
@@ -167,11 +187,8 @@ private:
     return ret;
   }
 
-  bool push_(const myobj& value, bool block) {
-    if (!enable) {
-      return false;
-    }
-    pthread_mutex_lock(&mutex);
+  bool check_queue_space_unlocked(bool block)
+  {
     num_threads++;
     bool ret = false;
     if (capacity > 0) {
@@ -180,20 +197,50 @@ private:
           pthread_cond_wait(&cv_full, &mutex);
         }
         if (!enable) {
-          goto exit;
+          num_threads--;
+          return false;
         }
       } else if (q.size() >= (uint32_t) capacity) {
-        goto exit;
+        num_threads--;
+        return false;
       }
     }
-    q.push(value);
-    ret = true;
-    if (mutexed_callback) {
-      mutexed_callback->pushing(value);
-    }
-    pthread_cond_signal(&cv_empty);
-  exit:
     num_threads--;
+    return true;
+  }
+
+  std::pair<bool, myobj> push_(myobj&& value, bool block)
+  {
+    if (!enable) {
+      return std::make_pair(false, std::move(value));
+    }
+    pthread_mutex_lock(&mutex);
+    bool ret = check_queue_space_unlocked(block);
+    if (ret) {
+      if (mutexed_callback) {
+        mutexed_callback->pushing(value);
+      }
+      q.push(std::move(value));
+      pthread_cond_signal(&cv_empty);
+    }
+    pthread_mutex_unlock(&mutex);
+    return std::make_pair(ret, std::move(value));
+  }
+
+  bool push_(const myobj& value, bool block)
+  {
+    if (!enable) {
+      return false;
+    }
+    pthread_mutex_lock(&mutex);
+    bool ret = check_queue_space_unlocked(block);
+    if (ret) {
+      if (mutexed_callback) {
+        mutexed_callback->pushing(value);
+      }
+      q.push(value);
+      pthread_cond_signal(&cv_empty);
+    }
     pthread_mutex_unlock(&mutex);
     return ret;
   }

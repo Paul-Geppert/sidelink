@@ -1,29 +1,5 @@
-#/**
-#* Copyright 2013-2019 
-#* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
-#*
-#* This file is part of the HHI Sidelink.
-#*
-#* HHI Sidelink is under the terms of the GNU Affero General Public License
-#* as published by the Free Software Foundation version 3.
-#*
-#* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
-#* without even the implied warranty of
-#* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-#*
-#* A copy of the GNU Affero General Public License can be found in
-#* the LICENSE file in the top-level directory of this distribution
-#* and at http://www.gnu.org/licenses/.
-#*
-#* The HHI Sidelink is based on srsLTE.
-#* All necessary files and sources from srsLTE are part of HHI Sidelink.
-#* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
-#* srsLTE can be found under:
-#* https://github.com/srsLTE/srsLTE
-#*/
-
 #
-# Copyright 2013-2017 Software Radio Systems Limited
+# Copyright 2013-2019 Software Radio Systems Limited
 #
 # This file is part of srsLTE
 #
@@ -34,7 +10,7 @@
 #
 # srsLTE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU Affero General Public License for more details.
 #
 # A copy of the GNU Affero General Public License can be found in
@@ -43,8 +19,7 @@
 #
 
 add_subdirectory(phy)
-add_subdirectory(mac)
-add_subdirectory(upper)
+add_subdirectory(stack)
 
 # Link libstdc++ and libgcc
 if(BUILD_STATIC)
@@ -55,15 +30,17 @@ if (RPATH)
   set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 endif (RPATH)
 
-add_executable(srssl main.cc ue_base.cc ue.cc metrics_stdout.cc metrics_csv.cc)
-target_link_libraries(srssl   
-                              srssl_mac
-                              srssl_phy
+add_executable(srssl main.cc ue.cc metrics_stdout.cc metrics_csv.cc)
+target_link_libraries(srssl   srssl_phy
+                              srssl_stack
                               srssl_upper
+                              srssl_mac
+                              srssl_rrc
                               srslte_common
                               srslte_phy
-                              srslte_upper
                               srslte_radio
+                              srslte_upper
+                              rrc_asn1
                               ${CMAKE_THREAD_LIBS_INIT}
                               ${Boost_LIBRARIES})
 
@@ -71,7 +48,20 @@ if (RPATH)
   set_target_properties(srssl PROPERTIES INSTALL_RPATH ".")
 endif (RPATH)
 
-install(TARGETS srssl DESTINATION ${RUNTIME_DIR})
+########################################################################
+# UE initialization test
+########################################################################
+
+if(NOT SRSGUI_FOUND)
+# Make sure srssl returns 0 and it does not leak
+add_test(srssl_version srssl --version)
+add_test(srssl_help srssl --help)
+endif(NOT SRSGUI_FOUND)
+
+# Checks that ue.conf.example is valid and it does not leak memory if RF fails
+if (ZEROMQ_FOUND)
+  add_test(ue_rf_failure srssl ${CMAKE_SOURCE_DIR}/srssl/ue.conf.example --rf.device_name=zmq)
+endif(ZEROMQ_FOUND)
 
 ########################################################################
 # Option to run command after build (useful for remote builds)

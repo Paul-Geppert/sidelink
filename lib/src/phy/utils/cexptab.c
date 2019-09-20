@@ -1,12 +1,31 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
- *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsLTE library.
+ * This file is part of srsLTE.
  *
  * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -30,6 +49,7 @@
 #include <assert.h>
 #include <complex.h>
 
+#include "srslte/phy/common/phy_common.h"
 #include "srslte/phy/utils/cexptab.h"
 
 int srslte_cexptab_init(srslte_cexptab_t *h, uint32_t size) {
@@ -81,3 +101,16 @@ void srslte_cexptab_gen_direct(cf_t *x, float freq, uint32_t len) {
   }
 }
 
+void srslte_cexptab_gen_sf(cf_t* x, float freq, uint32_t fft_size)
+{
+  cf_t* ptr = x;
+  for (uint32_t n = 0; n < 2; n++) {
+    for (uint32_t i = 0; i < 7; i++) {
+      uint32_t cplen = SRSLTE_CP_LEN_NORM(i, fft_size);
+      for (uint32_t t = 0; t < fft_size + cplen; t++) {
+        ptr[t] = cexpf(I * 2 * M_PI * ((float)t - (float)cplen) * freq / fft_size);
+      }
+      ptr += fft_size + cplen;
+    }
+  }
+}

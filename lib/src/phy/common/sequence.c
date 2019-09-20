@@ -1,12 +1,31 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
- *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsLTE library.
+ * This file is part of srsLTE.
  *
  * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -28,15 +47,15 @@
 #include <stdio.h>
 #include <strings.h>
 #include <pthread.h>
-#include <srslte/phy/common/sequence.h>
 
 #include "srslte/phy/common/sequence.h"
-#include "srslte/phy/utils/vector.h"
 #include "srslte/phy/utils/bit.h"
+#include "srslte/phy/utils/debug.h"
+#include "srslte/phy/utils/vector.h"
 
 #define Nc 1600
 
-#define MAX_SEQ_LEN  (128*1024)
+#define MAX_SEQ_LEN (256 * 1024)
 
 #define static_memory
 
@@ -54,14 +73,12 @@ int srslte_sequence_set_LTE_pr(srslte_sequence_t *q, uint32_t len, uint32_t seed
   int n;
 
   if (len > q->max_len) {
-    fprintf(stderr, "Error generating pseudo-random sequence: len %d exceeds maximum len %d\n",
-            len, MAX_SEQ_LEN);
+    ERROR("Error generating pseudo-random sequence: len %d exceeds maximum len %d\n", len, MAX_SEQ_LEN);
     return -1;
   }
 
   if (len > q->max_len) {
-    fprintf(stderr, "Error generating pseudo-random sequence: len %d is greater than allocated len %d\n",
-            len, q->max_len);
+    ERROR("Error generating pseudo-random sequence: len %d is greater than allocated len %d\n", len, q->max_len);
     return -1;
   }
   pthread_mutex_lock(&mutex);
@@ -90,8 +107,7 @@ int srslte_sequence_set_LTE_pr(srslte_sequence_t *q, uint32_t len, uint32_t seed
   uint32_t *x1, *x2;
 
   if (len > q->max_len) {
-    fprintf(stderr, "Error generating pseudo-random sequence: len %d is greater than allocated len %d\n",
-            len, q->max_len);
+    ERROR("Error generating pseudo-random sequence: len %d is greater than allocated len %d\n", len, q->max_len);
     return -1;
   }
 
@@ -139,6 +155,7 @@ int srslte_sequence_LTE_pr(srslte_sequence_t *q, uint32_t len, uint32_t seed) {
   for (int i=0;i<len;i++) {
     q->c_float[i] = (1-2*q->c[i]);
     q->c_short[i] = (int16_t) q->c_float[i];
+    q->c_char[i]  = (int8_t) q->c_float[i];;
   }
   return SRSLTE_SUCCESS;
 }
@@ -164,6 +181,10 @@ int srslte_sequence_init(srslte_sequence_t *q, uint32_t len) {
     if (!q->c_short) {
       return SRSLTE_ERROR;
     }
+    q->c_char = srslte_vec_malloc(len * sizeof(int8_t));
+    if (!q->c_char) {
+      return SRSLTE_ERROR;
+    }
     q->max_len = len;
   }
   return SRSLTE_SUCCESS;
@@ -181,6 +202,9 @@ void srslte_sequence_free(srslte_sequence_t *q) {
   }
   if (q->c_short) {
     free(q->c_short);
+  }
+  if (q->c_char) {
+    free(q->c_char);
   }
   bzero(q, sizeof(srslte_sequence_t));
 }

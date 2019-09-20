@@ -1,4 +1,28 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/**
  *
  * \section COPYRIGHT
  *
@@ -44,7 +68,7 @@
 #define TRACK_MAX_LOST          4
 #define TRACK_FRAME_SIZE        32
 #define FIND_NOF_AVG_FRAMES     4
-#define DEFAULT_SAMPLE_OFFSET_CORRECT_PERIOD  0
+#define DEFAULT_SL_SAMPLE_OFFSET_CORRECT_PERIOD  0
 #define DEFAULT_SFO_EMA_COEFF                 0.1
 
 
@@ -213,7 +237,7 @@ int srslte_ue_sl_sync_init_multi_decim(srslte_ue_sl_sync_t *q,
     q->sf_len = SRSLTE_SF_LEN(q->fft_size);
     q->file_mode = false; 
     q->agc_period = 0;
-    q->sample_offset_correct_period = DEFAULT_SAMPLE_OFFSET_CORRECT_PERIOD; 
+    q->sample_offset_correct_period = DEFAULT_SL_SAMPLE_OFFSET_CORRECT_PERIOD; 
     q->sfo_ema                      = DEFAULT_SFO_EMA_COEFF; 
 
     q->max_prb = max_prb;
@@ -430,7 +454,7 @@ void srslte_ue_sync_set_cfo_ema(srslte_ue_sl_sync_t *q, float ema) {
   srslte_sync_set_cfo_ema_alpha(&q->strack, ema);
 }
 
-void srslte_ue_sync_set_cfo_ref(srslte_ue_sl_sync_t *q, float ref_cfo)
+void srslte_ue_sl_sync_set_cfo_ref(srslte_ue_sl_sync_t *q, float ref_cfo)
 {
   // Accept REF-based CFO adjustments only after PSS CFO is stable
   if (q->pss_is_stable) {

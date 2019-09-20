@@ -1,19 +1,38 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
+ * This file is part of srsLTE.
  *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsUE library.
- *
- * srsUE is free software: you can redistribute it and/or modify
+ * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of
  * the License, or (at your option) any later version.
  *
- * srsUE is distributed in the hope that it will be useful,
+ * srsLTE is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
@@ -50,7 +69,7 @@ public:
   class process_callback
   {
     public:
-      virtual void process_pdu(uint8_t *buff, uint32_t len, channel_t channel, uint32_t tstamp) = 0;
+      virtual void process_pdu(uint8_t* buff, uint32_t len, channel_t channel) = 0;
   };
 
   pdu_queue(uint32_t pool_size = DEFAULT_POOL_SIZE) : pool(pool_size), callback(NULL), log_h(NULL) {}
@@ -58,7 +77,7 @@ public:
 
   uint8_t* request(uint32_t len);
   void     deallocate(uint8_t* pdu);
-  void     push(uint8_t *ptr, uint32_t len, channel_t channel = DCH, uint32_t tstamp = 0);
+  void     push(uint8_t* ptr, uint32_t len, channel_t channel = DCH);
 
   bool   process_pdus();
 
@@ -69,7 +88,6 @@ private:
   typedef struct  {
     uint8_t  ptr[MAX_PDU_LEN];
     uint32_t len;
-    uint32_t tstamp;
     channel_t channel;
     #ifdef SRSLTE_BUFFER_POOL_LOG_ENABLED
       char   debug_name[128];

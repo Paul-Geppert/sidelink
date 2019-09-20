@@ -1,12 +1,31 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
- *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsLTE library.
+ * This file is part of srsLTE.
  *
  * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -23,7 +42,6 @@
  * and at http://www.gnu.org/licenses/.
  *
  */
-
 
 #include <string.h>
 #include <strings.h>
@@ -142,10 +160,11 @@ void srslte_agc_process(srslte_agc_t *q, cf_t *signal, uint32_t len) {
       } else if (isinf(gain_db) || isnan(gain_db)) {
         gain_db = (q->min_gain + q->max_gain) / 2.0;
         INFO("Warning: AGC went to an unknown state. Setting Rx gain to %.2fdB\n", gain_db);
-      } else {
-        gain_uhd_db = q->set_gain_callback(q->uhd_handler, gain_db);
-        q->gain = pow(10, gain_uhd_db/10);
       }
+
+      // Set gain
+      gain_uhd_db = q->set_gain_callback(q->uhd_handler, gain_db);
+      q->gain = pow(10, gain_uhd_db / 10);
     }
     float *t; 
     switch(q->mode) {
@@ -156,8 +175,8 @@ void srslte_agc_process(srslte_agc_t *q, cf_t *signal, uint32_t len) {
         t = (float*) signal; 
         y = t[srslte_vec_max_fi(t, 2*len)];// take only positive max to avoid abs() (should be similar) 
         break;
-      default: 
-        fprintf(stderr, "Unsupported AGC mode\n");
+      default:
+        ERROR("Unsupported AGC mode\n");
         return; 
     }
     
@@ -172,14 +191,13 @@ void srslte_agc_process(srslte_agc_t *q, cf_t *signal, uint32_t len) {
           case SRSLTE_AGC_MODE_PEAK_AMPLITUDE:
             y = q->y_tmp[srslte_vec_max_fi(q->y_tmp, q->nof_frames)];
             break;
-          default: 
-            fprintf(stderr, "Unsupported AGC mode\n");
+          default:
+            ERROR("Unsupported AGC mode\n");
             return; 
         }
       }
     }
     
-    double gg = 1.0;
     if (q->isfirst) {
       q->y_out = y; 
       q->isfirst = false; 
@@ -187,10 +205,9 @@ void srslte_agc_process(srslte_agc_t *q, cf_t *signal, uint32_t len) {
       if (q->frame_cnt == 0) {
         q->y_out = (1-q->bandwidth) * q->y_out + q->bandwidth * y;
         if (!q->lock) {
-          gg = expf(-0.5*q->bandwidth*logf(q->y_out/q->target));
-          q->gain *= gg; 
-        }          
-        INFO("AGC gain: %.2f (%.2f) y_out=%.3f, y=%.3f target=%.1f gg=%.2f\n", gain_db, gain_uhd_db, q->y_out, y, q->target, gg);
+          q->gain *= q->target / q->y_out;
+        }
+        INFO("AGC gain: %.2f (%.2f) y_out=%.3f, y=%.3f target=%.1f\n", gain_db, gain_uhd_db, q->y_out, y, q->target);
       }
     }
   }

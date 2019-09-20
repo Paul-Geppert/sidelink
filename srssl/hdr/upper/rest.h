@@ -54,6 +54,7 @@
 // define must be set during configuration step
 #ifdef ENABLE_REST
 
+#include <srssl/hdr/phy/phy_common.h>
 #include <jansson.h>
 
 namespace srsue {
@@ -69,36 +70,19 @@ class rest// : public thread
 {
 public:
 
-  rest(){
-    printf("Constructed my ulfius\n");
-  }
+  rest(){}
 
-  void stop(){
-    printf("Destructed my ulfius\n");
-  }
+  void stop();
+
+  void init_and_start(phy_common * this_);
 
   void init(unsigned int port);
 
-  void add(char *prefix, int (* callback_function)(const struct _u_request * request, // Input parameters (set by the framework)
-                                                         struct _u_response * response,     // Output parameters (set by the user)
-                                                         void * user_data));
-
   void start();
 
+
   struct _u_instance instance;
-
 private:
-
-
-  // /**
-  //  * Callback function that put a "Hello World!" string in the response
-  //  */
-  // static int callback_get_test (const struct _u_request * request, struct _u_response * response, void * user_data) {
-  //   ulfius_set_string_body_response(response, 200, "Hello World!");
-  //   //mue->phy->workers_common
-  //   return U_CALLBACK_CONTINUE;
-  // }
-
 
 };
 

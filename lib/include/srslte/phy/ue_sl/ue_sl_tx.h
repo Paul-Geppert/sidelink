@@ -1,4 +1,28 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/**
  *
  * \section COPYRIGHT
  *
@@ -47,6 +71,7 @@
 #include "srslte/phy/phch/pssch.h"
 #include "srslte/phy/phch/psbch.h"
 #include "srslte/phy/phch/pusch.h"
+#include "srslte/phy/phch/pucch.h"
 #include "srslte/phy/phch/dci.h"
 #include "srslte/phy/phch/ra.h"
 #include "srslte/phy/sync/cfo.h"
@@ -100,7 +125,7 @@ typedef struct SRSLTE_API {
   srslte_pssch_t pssch;
   srslte_psbch_t psbch;
   
-  srslte_pucch_sched_t              pucch_sched; 
+  // (rl, merge_19_06) srslte_pucch_sched_t              pucch_sched; 
   srslte_refsignal_srs_cfg_t        srs_cfg;
   srslte_uci_cfg_t                  uci_cfg;
   srslte_pusch_hopping_cfg_t        hopping_cfg;
@@ -113,6 +138,8 @@ typedef struct SRSLTE_API {
   cf_t *refsignal; 
   cf_t *srs_signal; 
   cf_t *sf_symbols;
+
+  cf_t *out_buffer;
 
   cf_t *psbch_dmrs;
   cf_t *pscch_dmrs;
@@ -150,6 +177,8 @@ SRSLTE_API void srslte_ue_sl_tx_set_normalization(srslte_ue_sl_tx_t *q,
 
 SRSLTE_API float srslte_ue_sl_tx_get_last_amplitude(srslte_ue_sl_tx_t *q);
 
+#if 0
+// (rl, merge_19_06) 
 SRSLTE_API void srslte_ue_sl_tx_set_cfg(srslte_ue_sl_tx_t *q, 
                                      srslte_refsignal_dmrs_pusch_cfg_t *dmrs_cfg, 
                                      srslte_refsignal_srs_cfg_t        *srs_cfg,
@@ -213,6 +242,7 @@ SRSLTE_API void srslte_ue_sl_tx_set_rnti(srslte_ue_sl_tx_t *q,
 SRSLTE_API float srslte_ue_sl_tx_pusch_power(srslte_ue_sl_tx_t *q, 
                                           float PL, 
                                           float p0_preamble);
+#endif
 
 SRSLTE_API float srslte_ue_sl_tx_pucch_power(srslte_ue_sl_tx_t *q, 
                                           float PL, 
@@ -220,8 +250,8 @@ SRSLTE_API float srslte_ue_sl_tx_pucch_power(srslte_ue_sl_tx_t *q,
                                           uint32_t n_cqi, 
                                           uint32_t n_harq);
 
-SRSLTE_API float srslte_ue_sl_tx_srs_power(srslte_ue_sl_tx_t *q, 
-                                          float PL);
+// SRSLTE_API float srslte_ue_sl_tx_srs_power(srslte_ue_sl_tx_t *q, 
+//                                           float PL);
 
 /* Other static functions for UL PHY procedures defined in 36.213 */
 
