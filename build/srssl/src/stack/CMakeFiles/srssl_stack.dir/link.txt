@@ -1,0 +1,2 @@
+/usr/bin/ar qc libsrssl_stack.a  CMakeFiles/srssl_stack.dir/ue_stack_lte.cc.o
+/usr/bin/ranlib libsrssl_stack.a

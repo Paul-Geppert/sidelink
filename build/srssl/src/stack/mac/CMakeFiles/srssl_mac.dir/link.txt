@@ -1,0 +1,2 @@
+/usr/bin/ar qc libsrssl_mac.a  CMakeFiles/srssl_mac.dir/ul_harq.cc.o CMakeFiles/srssl_mac.dir/proc_sr.cc.o CMakeFiles/srssl_mac.dir/dl_harq.cc.o CMakeFiles/srssl_mac.dir/mac.cc.o CMakeFiles/srssl_mac.dir/mux.cc.o CMakeFiles/srssl_mac.dir/proc_bsr.cc.o CMakeFiles/srssl_mac.dir/proc_phr.cc.o CMakeFiles/srssl_mac.dir/proc_ra.cc.o CMakeFiles/srssl_mac.dir/demux.cc.o
+/usr/bin/ranlib libsrssl_mac.a
