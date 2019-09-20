@@ -372,10 +372,16 @@ bool cc_worker::decode_pscch_dl(srsue::mac_interface_phy_lte::mac_grant_dl_t* gr
       continue;
     }
 
-    printf("DECODED PSCCH  N_X_ID: %x on tti %d t_SL_k: %d (rbp:%d)\n",
+    printf("DECODED PSCCH  N_X_ID: %x on tti %d t_SL_k: %d (rbp:%d) SCI-1: frl: 0x%x(n: %d L: %d) gap: %d mcs: %d rti: %d\n",
             crc_rem, tti,
             srslte_repo_get_t_SL_k(&phy->ue_repo, tti),
-            rbp);
+            rbp,
+            sci.frl,
+            sci.frl_n_subCH,
+            sci.frl_L_subCH,
+            sci.time_gap,
+            sci.mcs.idx,
+            sci.rti);
 
     if(prb_offset != (uint32_t)phy->ue_repo.rp.startRB_Subchannel_r14 + sci.frl_n_subCH*phy->ue_repo.rp.sizeSubchannel_r14) {
       printf("Detected different Ressourcepool configurations.\n");
@@ -685,7 +691,7 @@ bool cc_worker::work_sl_rx()
     phy->snr_psbch = SRSLTE_VEC_EMA(snr, phy->snr_psbch, 0.1);
     phy->rsrp_psbch = SRSLTE_VEC_EMA(rsrp, phy->rsrp_psbch, 0.1);
 
-    if(phy->rsrp_psbch > 22.0) {
+    if(phy->rsrp_psbch > 30.0) {
       printf("We have high RSRP values(%f) in PSBCH, maybe reduce receiver gain.\n", phy->rsrp_psbch);
     }
 
@@ -754,6 +760,9 @@ bool cc_worker::work_sl_rx()
         ue_id = ue_id % 5;
         phy->snr_pssch_per_ue[ue_id] = SRSLTE_VEC_EMA(snr, phy->snr_pssch_per_ue[ue_id], 0.1);
         //printf("moving snr[%d]: %f\n", ue_id, phy->snr_pssch_per_ue[ue_id]);
+
+        printf("Current SNR: %f (EMA: %f) RSRP: %f (EMA: %f) for ue_id %d\n",
+                snr, phy->snr_pssch_per_ue[ue_id], rsrp, phy->rsrp_pssch_per_ue[ue_id], ue_id);
 
         // if(phy->args->sidelink_id == ue_id) {
         //   printf("decoded data in my own time slot????? tti: %d\n", tti);
@@ -869,28 +878,25 @@ bool cc_worker::work_sl_tx() {
 
     sci.time_gap = ul_mac_grant.sl_gap;
 
+    sci.mcs.idx = phy->pssch_fixed_i_mcs;
+
     uint8_t L_subch = 1;
     uint8_t n_subCH_start = 0;
 
     // get valid prb sizes by checking all subchannel sizes
-    for(L_subch = phy->ue_repo.rp.numSubchannel_r14; L_subch > 1; L_subch--) {
-      int n_prb = L_subch*phy->ue_repo.rp.sizeSubchannel_r14 - 2;
+    for(L_subch = 1; L_subch <= phy->ue_repo.rp.numSubchannel_r14; L_subch++) {
+      int n_prb = L_subch * phy->ue_repo.rp.sizeSubchannel_r14 - 2;
 
       // check if number of prb fullfills 2^a2*3^a3*5^a5, see14.1.1.4C
       if(!srslte_dft_precoding_valid_prb(n_prb)) {
         continue;
       }
 
-      // @todo: make this fixed mcs value configurable
-      sci.mcs.idx = 8;
       srslte_sl_fill_ra_mcs(&sci.mcs, n_prb);
 
-      break;
-    }
-
-    if(L_subch == 0) {
-      printf("Current resource pool configuration leads to an invalid prb setting.\n");
-      sci.mcs.tbs = 0;
+      if(phy->pssch_min_tbs <= sci.mcs.tbs) {
+        break;
+      }
     }
 
     // mac creates a packet that has exactly this size
@@ -908,14 +914,14 @@ bool cc_worker::work_sl_tx() {
       sci.rti = ul_action.tb.rv == 0 ? 0 : 1;
       
       float c_bits = 9*12*srslte_mod_bits_x_symbol(sci.mcs.mod)*(L_subch*phy->ue_repo.rp.sizeSubchannel_r14 - 2);
-      float i_bits = sci.mcs.tbs;
+      float i_bits = sci.mcs.tbs + 24;
 
-      printf("TBS: %d PRB: %d Channel-Bits: %.0f Coderate: %f (+CRC: %f)\n",
+      // effective channel code rate 3GPP 36.213 7.1.7.2
+      printf("TBS: %d PRB: %d Channel-Bits: %.0f Coderate: %f\n",
               sci.mcs.tbs,
               (L_subch*phy->ue_repo.rp.sizeSubchannel_r14 - 2),
               c_bits,
-              i_bits/c_bits,
-              (i_bits+24)/c_bits);
+              i_bits/c_bits);
       
       // select random between valid values
       n_subCH_start = rand() % (phy->ue_repo.rp.numSubchannel_r14 - L_subch + 1);
@@ -929,7 +935,7 @@ bool cc_worker::work_sl_tx() {
 
       srslte_repo_sci_encode(&phy->ue_repo, sci_buffer, &sci);
 
-      printf("TTI: %d t_SL_k: %d ENCODED SCI-1: prio: %d rr: 0x%x frl(%d): 0x%x gap: %d mcs: %x rti: %d\n",
+      printf("TTI: %d t_SL_k: %d ENCODED SCI-1: prio: %d rr: 0x%x frl(%d): 0x%x gap: %d mcs: %d rti: %d\n",
               tti,
               t_SL_k,
               sci.priority,

@@ -91,14 +91,15 @@ static int rest_get_metrics (const struct _u_request * request, struct _u_respon
 static int rest_get_repo_cb (const struct _u_request * request, struct _u_response * response, void * user_data) {
   phy_common * _this = (phy_common *)user_data;
 
-  json_t * json_body = json_pack("{sisisisisisisi}",
+  json_t * json_body = json_pack("{sisisisisisisisi}",
                                   "numSubchannel_r14",      _this->ue_repo.rp.numSubchannel_r14,
                                   "sizeSubchannel_r14",     _this->ue_repo.rp.sizeSubchannel_r14,
                                   "sl_OffsetIndicator_r14", _this->ue_repo.rp.sl_OffsetIndicator_r14,
                                   "sl_Subframe_r14_len",    _this->ue_repo.rp.sl_Subframe_r14_len,
                                   "startRB_PSCCH_Pool_r14", _this->ue_repo.rp.startRB_PSCCH_Pool_r14,
                                   "startRB_Subchannel_r14", _this->ue_repo.rp.startRB_Subchannel_r14,
-                                  "sizeSubchannel_r14",     _this->ue_repo.rp.sizeSubchannel_r14);
+                                  "pssch_fixed_i_mcs",      _this->pssch_fixed_i_mcs,
+                                  "pssch_min_tbs",          _this->pssch_min_tbs);
                                   
   ulfius_set_json_body_response(response, 200, json_body);
   json_decref(json_body);
@@ -134,6 +135,16 @@ static int rest_put_repo_cb (const struct _u_request * request, struct _u_respon
               "startRB_PSCCH_Pool_r14", &new_repo.startRB_PSCCH_Pool_r14,
               "startRB_Subchannel_r14", &new_repo.startRB_Subchannel_r14,
               "sizeSubchannel_r14",     &new_repo.sizeSubchannel_r14);
+
+  if((value = json_object_get(req, "pssch_fixed_i_mcs"))) {
+    if(json_integer_value(value) <= 28) {
+      _this->pssch_fixed_i_mcs = (uint8_t)json_integer_value(value);
+    }
+  }
+
+  if((value = json_object_get(req, "pssch_min_tbs"))) {
+    _this->pssch_min_tbs = (uint32_t)json_integer_value(value);
+  }
 
   json_decref(req);
 

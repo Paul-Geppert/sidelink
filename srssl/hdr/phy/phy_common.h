@@ -111,6 +111,9 @@ public:
   float         inst_sps_rsrp[1000]; // stores sps_rsrp value, for REST SPS_RSRP purpose.
   float         inst_sps_rssi[1000]; // stores sps_rssi value, for REST SPS_RSSI purpose. 
 
+  uint8_t pssch_fixed_i_mcs;
+  uint32_t pssch_min_tbs;
+
   // SCell EARFCN, PCI, configured and enabled list
   typedef struct {
     uint32_t earfcn     = 0;

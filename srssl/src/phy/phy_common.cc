@@ -101,6 +101,8 @@ phy_common::phy_common(uint32_t max_workers) : tx_sem(max_workers)
   ZERO_OBJECT(ue_repo);
   snr_psbch = 0;
   rsrp_psbch = 0.0;
+  pssch_fixed_i_mcs = 8;
+  pssch_min_tbs = 800;
 
   rar_grant_tti = -1;
 
@@ -782,6 +784,8 @@ void phy_common::reset()
   ZERO_OBJECT(snr_pssch_per_ue);
   ZERO_OBJECT(ue_repo);
   snr_psbch = 0;
+  pssch_fixed_i_mcs = 8;
+  pssch_min_tbs = 800;
 
   for (int i = 0; i < SRSLTE_MAX_RADIOS; i++) {
     is_first_of_burst[i] = true;

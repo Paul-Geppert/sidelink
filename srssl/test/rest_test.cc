@@ -397,6 +397,9 @@ int main(int argc, char **argv)
 
     srsue::g_restapi.init_and_start(&common);
 
+    // remove gain endpoint, as they required real hardware
+    ulfius_remove_endpoint_by_val(&srsue::g_restapi.instance, "GET", "/phy/gain", NULL);
+
     // issue request
     struct _u_request request;
     struct _u_response response;
