@@ -56,7 +56,7 @@ actual build
 ```
 mkdir build
 cd build
-cmake -DUSE_LTE_RATES=y ../
+cmake ../
 make
 ```
 
