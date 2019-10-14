@@ -1,12 +1,31 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
- *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsLTE library.
+ * This file is part of srsLTE.
  *
  * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -183,7 +202,7 @@ int main(int argc, char **argv) {
       srslte_rm_turbo_rx(buff_f, BUFFSZ, rm_bits_f, nof_e_bits, bits_f, long_cb_enc, rv_idx, 0);
 
       bzero(bits2_s, long_cb_enc*sizeof(short));
-      srslte_rm_turbo_rx_lut(rm_bits_s, bits2_s, nof_e_bits, cb_idx, rv_idx);
+      srslte_rm_turbo_rx_lut_(rm_bits_s, bits2_s, nof_e_bits, cb_idx, rv_idx, false);
 
       for (int i=0;i<long_cb_enc;i++) {
         if (bits_f[i] != bits2_s[i]) {

@@ -1,4 +1,28 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/**
  *
  * \section COPYRIGHT
  *
@@ -114,6 +138,7 @@ int frame_cnt;
 int main(int argc, char **argv) {
   uint8_t bch_payload[SRSLTE_SL_BCH_PAYLOAD_LEN];
   cf_t *input;
+  int n_port=0; 
   float *cfo;
   cf_t *signal = NULL;
 
@@ -257,7 +282,9 @@ int main(int argc, char **argv) {
   srslte_chest_sl_estimate_psbch(&est,
       fft.out_buffer,//&input[peak_pos[N_id_2]-9-128-10],
       ce,
-  SRSLTE_SL_MODE_4); 
+      SRSLTE_SL_MODE_4,
+      n_port, 
+      0); 
 
 
 

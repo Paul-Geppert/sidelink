@@ -1,12 +1,31 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
- *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsLTE library.
+ * This file is part of srsLTE.
  *
  * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -52,7 +71,7 @@ int srslte_dft_precoding_init(srslte_dft_precoding_t *q, uint32_t max_prb, bool 
       if(srslte_dft_precoding_valid_prb(i)) {
         DEBUG("Initiating DFT precoding plan for %d PRBs\n", i);
         if (srslte_dft_plan_c(&q->dft_plan[i], i*SRSLTE_NRE, is_tx?SRSLTE_DFT_FORWARD:SRSLTE_DFT_BACKWARD)) {
-          fprintf(stderr, "Error: Creating DFT plan %d\n",i);
+          ERROR("Error: Creating DFT plan %d\n", i);
           goto clean_exit;
         }
         srslte_dft_plan_set_norm(&q->dft_plan[i], true);
@@ -106,7 +125,7 @@ int srslte_dft_precoding(srslte_dft_precoding_t *q, cf_t *input, cf_t *output,
 {
   
   if (!srslte_dft_precoding_valid_prb(nof_prb) && nof_prb <= q->max_prb) {
-    fprintf(stderr, "Error invalid number of PRB (%d)\n", nof_prb);
+    ERROR("Error invalid number of PRB (%d)\n", nof_prb);
     return SRSLTE_ERROR; 
   }
 

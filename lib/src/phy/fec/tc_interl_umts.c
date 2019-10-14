@@ -1,12 +1,31 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
- *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsLTE library.
+ * This file is part of srsLTE.
  *
  * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -30,7 +49,7 @@
 #include <stdint.h>
 
 #include "srslte/phy/fec/tc_interl.h"
-#include "srslte/phy/fec/turbocoder.h"
+#include "srslte/phy/utils/debug.h"
 
 #define TURBO_SRSLTE_TCOD_RATE 	3
 
@@ -98,8 +117,7 @@ int srslte_tc_interl_UMTS_gen(srslte_tc_interl_t *h, uint32_t long_cb) {
   M_long = long_cb;
 
   if (long_cb > h->max_long_cb) {
-    fprintf(stderr, "Interleaver initiated for max_long_cb=%d\n",
-        h->max_long_cb);
+    ERROR("Interleaver initiated for max_long_cb=%d\n", h->max_long_cb);
     return -1;
   }
 

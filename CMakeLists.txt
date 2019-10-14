@@ -1,5 +1,5 @@
 #
-# Copyright 2013-2017 Software Radio Systems Limited
+# Copyright 2013-2019 Software Radio Systems Limited
 #
 # This file is part of srsLTE
 #
@@ -10,7 +10,7 @@
 #
 # srsLTE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU Affero General Public License for more details.
 #
 # A copy of the GNU Affero General Public License can be found in
@@ -68,15 +68,21 @@ option(ENABLE_SRSENB   "Build srsENB application"                 OFF)
 option(ENABLE_SRSEPC   "Build srsEPC application"                 OFF)
 option(DISABLE_SIMD    "disable simd instructions"                OFF)
 
-option(ENABLE_GUI      "Enable GUI (using srsGUI)"                ON)
-option(ENABLE_BLADERF  "Enable BladeRF"                           ON)
-option(ENABLE_SOAPYSDR "Enable SoapySDR"                          ON)
+option(ENABLE_GUI      "Enable GUI (using srsGUI)"                OFF)
+option(ENABLE_UHD      "Enable UHD"                               ON)
+option(ENABLE_BLADERF  "Enable BladeRF"                           OFF)
+option(ENABLE_SOAPYSDR "Enable SoapySDR"                          OFF)
+option(ENABLE_ZEROMQ   "Enable ZeroMQ"                            OFF)
+option(ENABLE_HARDSIM  "Enable support for SIM cards"             OFF)
 
 option(BUILD_STATIC    "Attempt to statically link external deps" OFF)
 option(RPATH           "Enable RPATH"                             OFF)
-option(ENABLE_ASAN     "Enable gcc address sanitizer"             OFF)
+option(ENABLE_ASAN     "Enable gcc/clang address sanitizer"       OFF)
+option(ENABLE_MSAN     "Enable clang memory sanitizer"            OFF)
+option(ENABLE_TIDY     "Enable clang tidy"                        OFF)
 
-option(USE_LTE_RATES   "Use standard LTE sampling rates"          OFF)
+option(USE_LTE_RATES   "Use standard LTE sampling rates"          ON)
+option(USE_GLIBC_IPV6  "Use glibc's own ipv6.h"                   ON)
 
 set(GCC_ARCH native CACHE STRING "GCC compile for specific architecture.")
 
@@ -134,21 +140,25 @@ else(POLARSSL_FOUND)
 endif(POLARSSL_FOUND)
 
 # Hard-SIM support
-find_package(PCSCLite)
-if (PCSCLITE_FOUND)
-  message(STATUS "Building with PCSC support.")
-  add_definitions(-DHAVE_PCSC)
-  set(HAVE_PCSC TRUE)
-  include_directories(${PCSCLITE_INCLUDE_DIR})
-  #link_directories(${PCSCLITE_LIBRARIES})
-endif (PCSCLITE_FOUND)
+if(ENABLE_HARDSIM)
+  find_package(PCSCLite)
+  if (PCSCLITE_FOUND)
+    message(STATUS "Building with PCSC support.")
+    add_definitions(-DHAVE_PCSC)
+    set(HAVE_PCSC TRUE)
+    include_directories(${PCSCLITE_INCLUDE_DIR})
+    #link_directories(${PCSCLITE_LIBRARIES})
+  endif (PCSCLITE_FOUND)
+endif(ENABLE_HARDSIM)
 
 # UHD
-find_package(UHD)
-if(UHD_FOUND)
-  include_directories(${UHD_INCLUDE_DIRS})
-  link_directories(${UHD_LIBRARY_DIRS})
-endif(UHD_FOUND)
+if(ENABLE_UHD)
+  find_package(UHD)
+  if(UHD_FOUND)
+    include_directories(${UHD_INCLUDE_DIRS})
+    link_directories(${UHD_LIBRARY_DIRS})
+  endif(UHD_FOUND)
+endif(ENABLE_UHD)
 
 # BladeRF
 if(ENABLE_BLADERF)
@@ -168,12 +178,21 @@ if(ENABLE_SOAPYSDR)
   endif(SOAPYSDR_FOUND)
 endif(ENABLE_SOAPYSDR)
 
-if(BLADERF_FOUND OR UHD_FOUND OR SOAPYSDR_FOUND)
+# ZeroMQ
+if(ENABLE_ZEROMQ)
+  find_package(ZeroMQ)
+  if(ZEROMQ_FOUND)
+    include_directories(${ZEROMQ_INCLUDE_DIRS})
+    link_directories(${ZEROMQ_LIBRARY_DIRS})
+  endif(ZEROMQ_FOUND)
+endif(ENABLE_ZEROMQ)
+
+if(BLADERF_FOUND OR UHD_FOUND OR SOAPYSDR_FOUND OR ZEROMQ_FOUND)
   set(RF_FOUND TRUE CACHE INTERNAL "RF frontend found")
-else(BLADERF_FOUND OR UHD_FOUND OR SOAPYSDR_FOUND)
+else(BLADERF_FOUND OR UHD_FOUND OR SOAPYSDR_FOUND OR ZEROMQ_FOUND)
   set(RF_FOUND FALSE CACHE INTERNAL "RF frontend found")
   add_definitions(-DDISABLE_RF)
-endif(BLADERF_FOUND OR UHD_FOUND OR SOAPYSDR_FOUND)
+endif(BLADERF_FOUND OR UHD_FOUND OR SOAPYSDR_FOUND OR ZEROMQ_FOUND)
 
 # Boost
 if(ENABLE_SRSUE OR ENABLE_SRSSL OR ENABLE_SRSENB OR ENABLE_SRSEPC)
@@ -213,6 +232,7 @@ endif(ENABLE_GUI)
 # check dependent librarys for the REST interface are available
 find_package(ULFIUS)
 find_package(JANSSON)
+find_package(ORCANIA)
 
 if(ULFIUS_FOUND AND JANSSON_FOUND)
   add_definitions(-DENABLE_REST)
@@ -268,16 +288,16 @@ macro(ADD_CXX_COMPILER_FLAG_IF_AVAILABLE flag have)
 endmacro(ADD_CXX_COMPILER_FLAG_IF_AVAILABLE)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${GCC_ARCH} -Wall -Wno-comment -Wno-reorder -Wno-unused-but-set-variable -Wno-unused-variable -Wformat -Wmissing-field-initializers -Wtype-limits -std=c++03")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-comment -Wno-reorder -Wno-unused-but-set-variable -Wno-unused-variable -Wtype-limits -std=c++11")
 
   find_package(SSE)
   if (HAVE_AVX2)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfpmath=sse -mavx2 -DLV_HAVE_AVX2 -DLV_HAVE_AVX -DLV_HAVE_SSE")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${GCC_ARCH} -mfpmath=sse -mavx2 -DLV_HAVE_AVX2 -DLV_HAVE_AVX -DLV_HAVE_SSE")
   else (HAVE_AVX2)
     if(HAVE_AVX)
-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfpmath=sse -mavx -DLV_HAVE_AVX -DLV_HAVE_SSE")
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${GCC_ARCH} -mfpmath=sse -mavx -DLV_HAVE_AVX -DLV_HAVE_SSE")
     elseif(HAVE_SSE)
-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfpmath=sse -msse4.1 -DLV_HAVE_SSE")
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${GCC_ARCH} -mfpmath=sse -msse4.1 -DLV_HAVE_SSE")
     endif(HAVE_AVX)
   endif (HAVE_AVX2)
 endif(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -285,7 +305,7 @@ endif(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clan
 ADD_CXX_COMPILER_FLAG_IF_AVAILABLE("-Werror=incompatible-pointer-types" HAVE_ERROR_INCOMPATIBLE)
 
 if(CMAKE_C_COMPILER_ID MATCHES "GNU" OR CMAKE_C_COMPILER_ID MATCHES "Clang")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=${GCC_ARCH} -Wall -Wno-comment -Wno-write-strings -Winline -Wno-unused-result -Wformat -Wmissing-field-initializers -Wtype-limits -std=c99 -D_GNU_SOURCE")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-comment -Wno-write-strings -Winline -Wno-unused-result -Wformat -Wmissing-field-initializers -Wtype-limits -std=c99 -D_GNU_SOURCE")
 
   if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ggdb -O0 -DDEBUG_MODE -DBUILD_TYPE_DEBUG")
@@ -295,8 +315,8 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU" OR CMAKE_C_COMPILER_ID MATCHES "Clang")
       set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ggdb -DBUILD_TYPE_RELWITHDEBINFO")
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -DBUILD_TYPE_RELWITHDEBINFO")
     else(${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
-      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -DBUILD_TYPE_RELEASE")
-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -DBUILD_TYPE_RELEASE")
+      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -fno-trapping-math -fno-math-errno -DBUILD_TYPE_RELEASE")
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -fno-trapping-math -fno-math-errno -DBUILD_TYPE_RELEASE")
     endif(${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
   endif(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 
@@ -305,14 +325,19 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU" OR CMAKE_C_COMPILER_ID MATCHES "Clang")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DFORCE_STANDARD_RATE")
   endif (USE_LTE_RATES)
 
+  if (USE_GLIBC_IPV6)
+    message(STATUS "Using default glibc header for IPv6 support.")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_GLIBC_IPV6")
+  endif (USE_GLIBC_IPV6)
+
   find_package(SSE)
   if (HAVE_AVX2)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfpmath=sse -mavx2 -DLV_HAVE_AVX2 -DLV_HAVE_AVX -DLV_HAVE_SSE")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=${GCC_ARCH} -mfpmath=sse -mavx2 -DLV_HAVE_AVX2 -DLV_HAVE_AVX -DLV_HAVE_SSE")
   else (HAVE_AVX2)
     if(HAVE_AVX)
-      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfpmath=sse -mavx -DLV_HAVE_AVX -DLV_HAVE_SSE")
+      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=${GCC_ARCH} -mfpmath=sse -mavx -DLV_HAVE_AVX -DLV_HAVE_SSE")
     elseif(HAVE_SSE)
-      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfpmath=sse -msse4.1 -DLV_HAVE_SSE")
+      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=${GCC_ARCH} -mfpmath=sse -msse4.1 -DLV_HAVE_SSE")
     endif(HAVE_AVX)
   endif (HAVE_AVX2)
 
@@ -321,8 +346,8 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU" OR CMAKE_C_COMPILER_ID MATCHES "Clang")
   endif (HAVE_FMA)
 
   if (HAVE_AVX512)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mavx512f -mavx512cd -DLV_HAVE_AVX512")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx512f -mavx512cd -DLV_HAVE_AVX512")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=${GCC_ARCH} -mavx512f -mavx512cd -mavx512bw -mavx512dq -DLV_HAVE_AVX512")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${GCC_ARCH} -mavx512f -mavx512cd -mavx512bw -mavx512dq -DLV_HAVE_AVX512")
   endif(HAVE_AVX512)
 
   if(NOT ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
@@ -331,27 +356,38 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU" OR CMAKE_C_COMPILER_ID MATCHES "Clang")
     endif(HAVE_SSE)
   endif(NOT ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 
-  
-  if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
-    set(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -mfpu=neon -march=native -DIS_ARM -DHAVE_NEON")
-    message(STATUS "have ARM")
+  if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm" OR ${CMAKE_SYSTEM_PROCESSOR} MATCHES "aarch")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DIS_ARM -DHAVE_NEON -mfloat-abi=hard -mfpu=neon")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DIS_ARM -mfloat-abi=hard -mfpu=neon")
+    message(STATUS "Detected ARM processor")
     set(HAVE_NEON "True")
-  else(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
+  else(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm" OR ${CMAKE_SYSTEM_PROCESSOR} MATCHES "aarch")
     set(HAVE_NEON "False")
-  endif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
+  endif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm" OR ${CMAKE_SYSTEM_PROCESSOR} MATCHES "aarch")
   set(CMAKE_REQUIRED_FLAGS ${CMAKE_C_FLAGS})
 
- if(NOT HAVE_SSE AND NOT HAVE_NEON AND NOT DISABLE_SIMD)
-  message(FATAL_ERROR "no SIMD instructions found")
- endif(NOT HAVE_SSE AND NOT HAVE_NEON AND NOT DISABLE_SIMD)
+  if(NOT HAVE_SSE AND NOT HAVE_NEON AND NOT DISABLE_SIMD)
+    message(FATAL_ERROR "no SIMD instructions found")
+  endif(NOT HAVE_SSE AND NOT HAVE_NEON AND NOT DISABLE_SIMD)
 
   if(NOT WIN32)
       ADD_CXX_COMPILER_FLAG_IF_AVAILABLE(-fvisibility=hidden HAVE_VISIBILITY_HIDDEN)
   endif(NOT WIN32)
- if (ENABLE_ASAN)
-   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
- endif (ENABLE_ASAN)
+
+  if (ENABLE_ASAN AND ENABLE_MSAN)
+    message(FATAL_ERROR "ASAN and MSAN cannot be enabled at the same time.")
+  endif (ENABLE_ASAN AND ENABLE_MSAN)
+
+  if (ENABLE_ASAN)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
+  endif (ENABLE_ASAN)
+
+  if (ENABLE_MSAN AND CMAKE_C_COMPILER_ID MATCHES "Clang")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=memory -fno-omit-frame-pointer -fPIE -pie")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=memory -fno-omit-frame-pointer -fPIE -pie")
+  endif (ENABLE_MSAN AND CMAKE_C_COMPILER_ID MATCHES "Clang")
+
 endif(CMAKE_C_COMPILER_ID MATCHES "GNU" OR CMAKE_C_COMPILER_ID MATCHES "Clang")
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
@@ -361,6 +397,24 @@ endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
 message(STATUS "CMAKE_C_FLAGS is ${CMAKE_C_FLAGS}")
 message(STATUS "CMAKE_CXX_FLAGS is ${CMAKE_CXX_FLAGS}")
+
+
+########################################################################
+# clang-tidy check
+########################################################################
+if(ENABLE_TIDY)
+  find_program(
+          CLANG_TIDY_BIN
+          NAMES "clang-tidy"
+          DOC "Path to clang-tidy executable"
+  )
+  if(NOT CLANG_TIDY_BIN)
+    message(STATUS "clang-tidy not found.")
+  else()
+    message(STATUS "clang-tidy found: ${CLANG_TIDY_BIN}")
+    set(DO_CLANG_TIDY "${CLANG_TIDY_BIN}" "-checks=*,-clang-analyzer-alpha.*,-modernize-*,-cppcoreguidelines-pro-type-vararg,-cppcoreguidelines-pro-bounds-pointer-arithmetic,-cppcoreguidelines-pro-bounds-constant-array-index")
+  endif()
+endif(ENABLE_TIDY)
 
 ########################################################################
 # Create uninstall targets

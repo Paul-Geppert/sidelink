@@ -1,12 +1,31 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
- *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsLTE library.
+ * This file is part of srsLTE.
  *
  * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -52,10 +71,22 @@
 #endif
 
 
+// Useful macros for templates
+#define CONCAT(a, b) a##b
+#define CONCAT2(a, b) CONCAT(a,b)
+
+#define STRING2(x) #x
+#define STRING(x) STRING2(x)
+
 // Common error codes
-#define SRSLTE_SUCCESS                0
-#define SRSLTE_ERROR                  -1
-#define SRSLTE_ERROR_INVALID_INPUTS   -2
+#define SRSLTE_SUCCESS 0
+#define SRSLTE_ERROR -1
+#define SRSLTE_ERROR_INVALID_INPUTS -2
+#define SRSLTE_ERROR_TIMEOUT -3
+#define SRSLTE_ERROR_INVALID_COMMAND -4
+#define SRSLTE_ERROR_OUT_OF_BOUNDS -5
+#define SRSLTE_ERROR_CANT_START -6
+#define SRSLTE_ERROR_ALREADY_STARTED -7
 
 // cf_t definition
 typedef _Complex float cf_t;

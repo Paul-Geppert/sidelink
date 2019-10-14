@@ -1,12 +1,31 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
- *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsLTE library.
+ * This file is part of srsLTE.
  *
  * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -48,8 +67,8 @@ int srslte_softbuffer_rx_init(srslte_softbuffer_rx_t *q, uint32_t nof_prb) {
   
   if (q != NULL) {    
     bzero(q, sizeof(srslte_softbuffer_rx_t));
-    
-    ret = srslte_ra_tbs_from_idx(26, nof_prb);
+
+    ret = srslte_ra_tbs_from_idx(33, nof_prb);
     if (ret != SRSLTE_ERROR) {
       q->max_cb =  (uint32_t) ret / (SRSLTE_TCOD_MAX_LEN_CB - 24) + 1; 
       ret = SRSLTE_ERROR;
@@ -159,8 +178,8 @@ int srslte_softbuffer_tx_init(srslte_softbuffer_tx_t *q, uint32_t nof_prb) {
     ret = SRSLTE_ERROR; 
     
     bzero(q, sizeof(srslte_softbuffer_tx_t));
-    
-    ret = srslte_ra_tbs_from_idx(26, nof_prb);
+
+    ret = srslte_ra_tbs_from_idx(33, nof_prb);
     if (ret != SRSLTE_ERROR) {
       q->max_cb =  (uint32_t) ret / (SRSLTE_TCOD_MAX_LEN_CB - 24) + 1; 
       

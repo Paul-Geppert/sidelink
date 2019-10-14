@@ -1,12 +1,31 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
- *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsLTE library.
+ * This file is part of srsLTE.
  *
  * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -26,6 +45,7 @@
 
 // A bunch of helper functions to process device arguments
 
+#include <string.h>
 
 #define REMOVE_SUBSTRING_WITHCOMAS(S, TOREMOVE) \
   remove_substring(S, TOREMOVE ",");\
@@ -34,15 +54,17 @@
   remove_substring(S, ", " TOREMOVE);\
   remove_substring(S, TOREMOVE)
 
-static void remove_substring(char *s,const char *toremove) {
+static inline void remove_substring(char* s, const char* toremove)
+{
   while((s=strstr(s,toremove))) {
     memmove(s,s+strlen(toremove),1+strlen(s+strlen(toremove)));
   }
 }
 
-static void copy_subdev_string(char *dst, char *src) {
+static inline void copy_subdev_string(char* dst, char* src)
+{
   int n = 0;
-  size_t len = strlen(src);
+  int len = (int)strlen(src);
   /* Copy until end of string or comma */
   while (n < len && src[n] != '\0' && src[n] != ',') {
     dst[n] = src[n];

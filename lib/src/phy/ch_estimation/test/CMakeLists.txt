@@ -1,5 +1,5 @@
 #
-# Copyright 2013-2017 Software Radio Systems Limited
+# Copyright 2013-2019 Software Radio Systems Limited
 #
 # This file is part of srsLTE
 #
@@ -10,7 +10,7 @@
 #
 # srsLTE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU Affero General Public License for more details.
 #
 # A copy of the GNU Affero General Public License can be found in
@@ -29,9 +29,9 @@ add_test(chest_test_dl_cellid0 chest_test_dl -c 0)
 add_test(chest_test_dl_cellid1 chest_test_dl -c 1) 
 add_test(chest_test_dl_cellid2 chest_test_dl -c 2) 
 
-add_test(chest_test_dl_cellid0 chest_test_dl -c 0 -r 50) 
-add_test(chest_test_dl_cellid1 chest_test_dl -c 1 -r 50) 
-add_test(chest_test_dl_cellid2 chest_test_dl -c 2 -r 50) 
+add_test(chest_test_dl_cellid0_50prb chest_test_dl -c 0 -r 50)
+add_test(chest_test_dl_cellid1_50prb chest_test_dl -c 1 -r 50)
+add_test(chest_test_dl_cellid2_50prb chest_test_dl -c 2 -r 50)
 
 
 ########################################################################
@@ -57,5 +57,3 @@ add_executable(refsignal_sl_test refsignal_sl_test.c)
 target_link_libraries(refsignal_sl_test srslte_phy srslte_common)
 
 add_test(refsignal_sl_test refsignal_sl_test -r 50) 
-
-

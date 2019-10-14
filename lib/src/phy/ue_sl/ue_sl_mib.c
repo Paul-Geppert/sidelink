@@ -1,4 +1,28 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/**
  *
  * \section COPYRIGHT
  *
@@ -195,7 +219,8 @@ int srslte_ue_sl_mib_decode(srslte_ue_sl_mib_t * q,
   srslte_ofdm_rx_sf(&q->fft);
 
   // get channel estimates for psbch
-  ret = srslte_chest_sl_estimate_psbch(&q->chest, q->sf_symbols, q->ce, SRSLTE_SL_MODE_4);
+  // ret = srslte_chest_sl_estimate_psbch(&q->chest, q->sf_symbols, q->ce, SRSLTE_SL_MODE_4);
+  ret = srslte_chest_sl_estimate_psbch(&q->chest, q->sf_symbols, q->ce, SRSLTE_SL_MODE_4, 0, 0); 
   if (ret < 0) {
     return SRSLTE_ERROR;
   }
@@ -233,7 +258,7 @@ int srslte_ue_sl_mib_decode(srslte_ue_sl_mib_t * q,
  * Does single as well as combined/harq decoding.
  * 
  */
-static int sl_pscch_decode(srslte_ue_sl_mib_t * q,
+static int sl_pssch_decode(srslte_ue_sl_mib_t * q,
                   srslte_repo_t *repo,
                   srslte_ra_sl_sci_t sci,
                   uint8_t *decoded,
@@ -261,8 +286,8 @@ static int sl_pscch_decode(srslte_ue_sl_mib_t * q,
                                     sci.frl_L_subCH*repo->rp.sizeSubchannel_r14 - 2);
 
     printf("SL-SCH n0 %f\n", srslte_chest_sl_get_noise_estimate(&q->chest));
-    printf("RSRP: %f\n", q->chest.pilot_power);
-    printf("SNR: %f \n",
+    printf("RSRP: %f dBm\n", 10*log10(q->chest.pilot_power) + 30 - q->fft.fft_plan.norm*10*log10(q->fft.fft_plan.size));
+    printf("SNR: %f dB\n",
             10*log10((q->chest.pilot_power-srslte_chest_sl_get_noise_estimate(&q->chest))/srslte_chest_sl_get_noise_estimate(&q->chest)));
     
     
@@ -286,6 +311,9 @@ static int sl_pscch_decode(srslte_ue_sl_mib_t * q,
     data_rx[0] = decoded;
     memset(data_rx[0], 0xFF, sizeof(uint8_t) * sci.mcs.tbs/8 + 3);
 
+    struct timeval t[3]; 
+    gettimeofday(&t[1], NULL);
+
     // first decoding attempt is made on first buffer, which is always reset
     int decode_ret = srslte_pssch_decode_simple(&q->pssch,
                                                 &sci,
@@ -298,12 +326,19 @@ static int sl_pscch_decode(srslte_ue_sl_mib_t * q,
                                                 sci.frl_L_subCH*repo->rp.sizeSubchannel_r14 - 2,
                                                 data_rx);//uint8_t *data[SRSLTE_MAX_CODEWORDS],
 
+    gettimeofday(&t[2], NULL);
+    get_time_interval(t);
+
+    printf("First decoding took %ld us and %d iterations\n", t[0].tv_usec, q->pssch.last_nof_iterations[0]);
+
     if(SRSLTE_SUCCESS == decode_ret) {
       printf("HARQ: single decoding successful\n");
     }
 
     // we need keep track if this cb was already decoded and therefore reported as success
     bool harq_already_decoded = *q->softbuffers[1]->cb_crc;
+
+    gettimeofday(&t[1], NULL);
 
     // second decoding attempt is made on second buffer
     int decode_ret_c = srslte_pssch_decode_simple(&q->pssch,
@@ -316,8 +351,16 @@ static int sl_pscch_decode(srslte_ue_sl_mib_t * q,
                                                 prb_offset + 2,
                                                 sci.frl_L_subCH*repo->rp.sizeSubchannel_r14 - 2,
                                                 data_rx);//uint8_t *data[SRSLTE_MAX_CODEWORDS],
+
+    gettimeofday(&t[2], NULL);
+    get_time_interval(t);
+
+    printf("Combined decoding took %ld us and %d iterations\n", t[0].tv_usec, q->pssch.last_nof_iterations[0]);
+
     if(SRSLTE_SUCCESS == decode_ret_c) {
       printf("HARQ: combined decoding successful. Repeated: %d\n", harq_already_decoded);
+    } else {
+      printf("HARQ: Combined decoding failed with code: %x, ran %d iterations.\n", decode_ret_c, q->pssch.last_nof_iterations[0]);
     }
 
     // reset buffer, for future decodings
@@ -366,9 +409,7 @@ int srslte_ue_sl_pssch_decode(srslte_ue_sl_mib_t * q,
 {
   srslte_ra_sl_sci_t sci;
   uint16_t crc_rem = 0xdead;
-  cf_t * ce[4];
 
-  ce[0] = q->ce;
   *n_decoded_bytes = 0;
 
   /* Run FFT for the slot symbols */
@@ -388,7 +429,7 @@ int srslte_ue_sl_pssch_decode(srslte_ue_sl_mib_t * q,
   q->pssch.n_PSSCH_ssf = 0; //@todo, make dynamically when sfn is detected 
 
   // decode pssch with sci-1 information
-  return sl_pscch_decode(q, repo, sci, decoded, n_decoded_bytes);
+  return sl_pssch_decode(q, repo, sci, decoded, n_decoded_bytes);
 }
 
 
@@ -426,6 +467,12 @@ int srslte_ue_sl_pscch_decode(srslte_ue_sl_mib_t * q,
   srslte_ofdm_rx_sf(&q->fft);
 
 
+  float rssi_time = (10 * log10(srslte_vec_avg_power_cf(q->fft.in_buffer, SRSLTE_SF_LEN_PRB(q->psbch.cell.nof_prb))) + 30);
+  float rssi_freq = (10 * log10(srslte_vec_avg_power_cf(q->sf_symbols, q->psbch.cell.nof_prb*SRSLTE_NRE*14)) + 30);
+
+  // apply normalization
+  rssi_freq -= q->fft.fft_plan.norm ? 0.0 : 10*log10(q->fft.fft_plan.size);
+
   ce[0] = q->ce;
   *n_decoded_bytes = 0;
 
@@ -454,13 +501,17 @@ int srslte_ue_sl_pscch_decode(srslte_ue_sl_mib_t * q,
 
     printf("DECODED PSCCH  N_X_ID: %x  n0: %f\n", crc_rem, srslte_chest_sl_get_noise_estimate(&q->chest));
 
+    printf("RSSI | t-domain: %f dBm | f-domain: %f dBm\n", rssi_time, rssi_freq);
+
     // set parameters for pssch
     q->pssch.n_X_ID = crc_rem;
     q->pssch.n_PSSCH_ssf = 0; //@todo, make dynamically when sfn is detected 
 
     // decode pssch with sci-1 information
-    return sl_pscch_decode(q, repo, sci, decoded, n_decoded_bytes);
+    return sl_pssch_decode(q, repo, sci, decoded, n_decoded_bytes);
   }
+
+  return ret;
 }
 
 

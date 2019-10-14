@@ -62,6 +62,8 @@ extern "C" {
 #include <srslte/phy/phch/repo.h>
 #include <srssl/hdr/upper/rest.h>
 
+using namespace srsue;
+
   SL_CommResourcePoolV2X_r14 rp = {
     0, //uint8_t sl_OffsetIndicator_r14;
 
@@ -94,6 +96,33 @@ extern "C" {
   // srslte_repo_build_resource_pool(&ue_repo);
 
 
+static uint32_t ttl = 1;
+static uint32_t port = 9865;
+
+static void usage(char *prog) {
+  printf("Usage: %s [t]\n", prog);
+  printf("\t-t Seconds the rest server is running [Default %d]\n", ttl);
+  printf("\t-p Port to listen on [Default %d]\n", port);
+}
+
+
+void parse_args(int argc, char **argv) {
+  int opt;
+  while ((opt = getopt(argc, argv, "tp")) != -1) {
+    switch (opt) {
+      case 't':
+        ttl = (uint32_t)(uint32_t)strtol(argv[optind], NULL, 10);
+        break;
+      case 'p':
+        port = (uint32_t)(uint32_t)strtol(argv[optind], NULL, 10);
+        break;
+      default:
+        usage(argv[0]);
+        exit(-1);
+    }
+  }
+}
+
 
 
 static int callback_get_test (const struct _u_request * request, struct _u_response * response, void * user_data) {
@@ -107,7 +136,7 @@ static int callback_get_test (const struct _u_request * request, struct _u_respo
                                 "startRB_Subchannel_r14", rp.startRB_Subchannel_r14,
                                 "sizeSubchannel_r14",     rp.sizeSubchannel_r14);
 
-  printf("json_pack returned %x\n", json_body);
+  printf("json_pack returned %p\n", json_body);
                                   
   ulfius_set_json_body_response(response, 200, json_body);
   json_decref(json_body);
@@ -126,7 +155,7 @@ static int callback_put_test (const struct _u_request * request, struct _u_respo
   }
 
   printf("ulfius_get_json_body_request returned %s\n", json_error.text);
-  printf("ulfius_get_json_body_request returned %d\n", req);
+  printf("ulfius_get_json_body_request returned %p\n", req);
 
     char *jd = json_dumps(req, 0);
   printf("%s\n", jd);
@@ -175,8 +204,11 @@ static int callback_put_test (const struct _u_request * request, struct _u_respo
 int main(int argc, char **argv)
 {
   srsue::rest r;
+
+  parse_args(argc, argv);
+
   //r.init();
-  if (ulfius_init_instance(&r.instance, 9078, NULL, NULL) != U_OK) {
+  if (ulfius_init_instance(&r.instance, port, NULL, NULL) != U_OK) {
     printf("Error ulfius_init_instance, abort\n");
   }
 
@@ -208,16 +240,21 @@ int main(int argc, char **argv)
 
   char *jd = json_dumps(json_body, 0);
   printf("%s\n", jd);
+  json_decref(json_body);
 
   json_error_t error;
   json_t * jl = json_loads(jd, JSON_DECODE_ANY, &error);
+  free(jd);
 
   jd = json_dumps(jl, 0);
   printf("Decoded: %s\n", jd);
+  free(jd);
 
   int dec_sheep = 0;
   int dec_e1 = 0;
   json_unpack(jl, "{s?i,s?i}", "e1", &dec_e1, "nbsheep", &dec_sheep);
+
+  json_decref(jl);
 
   printf("dec_sheep %d\n", dec_sheep);
   printf("dec_e1 %d\n", dec_e1);
@@ -226,6 +263,8 @@ int main(int argc, char **argv)
         "error", "resource not found", "message", "no resource available at this address", "bal", 45);
         jd = json_dumps(json_body, 0);
   printf("%s\n", jd);
+  json_decref(json_body);
+  free(jd);
 
 
 
@@ -244,7 +283,9 @@ int main(int argc, char **argv)
 
   jd = json_dumps(json_body, 0);
   printf("%s\n", jd);
+  free(jd);
 
+  json_decref(json_body);
 
   int ret;
 
@@ -265,10 +306,172 @@ int main(int argc, char **argv)
   ret = ulfius_start_framework(&r.instance);
   if(ret != U_OK) {
     printf("Error starting framework %d\n", ret);
+    return ret;
   }
 
-  std::cout << "REST test .." << std::endl;
-  usleep(80e6);
-  
+  printf("REST test listening on port %d for %d seconds..\n", r.instance.port, ttl);
+
+  {
+    struct _u_request request;
+    struct _u_response response;
+    const char *addr = "http://localhost:9865/phy/repo\0";
+    //const char *addr = "http://heise.de";
+
+    ulfius_init_request(&request);
+    ulfius_init_response(&response);
+
+    request.http_url = o_strdup("http://localhost:9865/phy/repo");
+
+    ret = ulfius_send_http_request(&request, &response);
+    if (U_OK != ret) {
+      printf("ulfius_send_http_request failed with %d\n", ret);
+    }
+
+    // overwrites last received char, but this allows for valid string termination
+    ((char*)response.binary_body)[response.binary_body_length - 1] = '\0';
+    printf("binary_body: %s\n", (char*)response.binary_body);
+
+    ulfius_clean_request(&request);
+    ulfius_clean_response(&response);
+  }
+
+
+  // test the rest api directly
+  // we fill the pyh_common struct with only the neccessary data
+  {
+    phy_args_t phy_args;
+    phy_args.sidelink_id = 0;
+
+    srsue::phy_common common(1);// = new srsue::phy_common(1);// srsue::phy_common::phy_common(1);
+
+    common.args = &phy_args;
+
+    // init array
+    srand (1337.1337);
+    for(unsigned int i = 0; i<sizeof(common.inst_sps_rssi)/sizeof(common.inst_sps_rssi[0]); i++) {
+      common.inst_sps_rssi[i] = -110.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(120.0)));
+    }
+
+    srsue::g_restapi.init_and_start(&common);
+
+    // issue request
+    struct _u_request request;
+    struct _u_response response;
+
+    ulfius_init_request(&request);
+    ulfius_init_response(&response);
+
+    request.http_url = o_strdup("http://localhost:13000/phy/SPS_rssi");
+
+    ret = ulfius_send_http_request(&request, &response);
+    if (U_OK != ret) {
+      printf("ulfius_send_http_request failed with %d\n", ret);
+    }
+
+    printf("respones body %p size %ld addr is at %s\n", response.binary_body, response.binary_body_length, request.http_url);
+
+    ((char*)response.binary_body)[response.binary_body_length - 1] = '\0';
+    printf("RESULT: %s\n", (char*)response.binary_body);
+
+    ulfius_clean_request(&request);
+    ulfius_clean_response(&response);
+
+    srsue::g_restapi.stop();
+  }
+
+
+
+  {
+    phy_args_t phy_args;
+    phy_args.sidelink_id = 0;
+
+    srsue::phy_common common(1);// = new srsue::phy_common(1);// srsue::phy_common::phy_common(1);
+
+    common.args = &phy_args;
+
+    // init array
+    srand (1337.1337);
+    for(unsigned int i = 0; i<sizeof(common.snr_pssch_per_ue)/sizeof(common.snr_pssch_per_ue[0]); i++) {
+      common.snr_pssch_per_ue[i] = -110.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(120.0)));
+    }
+
+    srsue::g_restapi.init_and_start(&common);
+
+    // remove gain endpoint, as they required real hardware
+    ulfius_remove_endpoint_by_val(&srsue::g_restapi.instance, "GET", "/phy/gain", NULL);
+
+    // issue request
+    struct _u_request request;
+    struct _u_response response;
+
+    ulfius_init_request(&request);
+    ulfius_init_response(&response);
+
+    request.http_url = o_strdup("http://localhost:13000/phy/metrics");
+
+    ret = ulfius_send_http_request(&request, &response);
+    if (U_OK != ret) {
+      printf("ulfius_send_http_request failed with %d\n", ret);
+    }
+
+    printf("respones body %p size %ld addr is at %s\n", response.binary_body, response.binary_body_length, request.http_url);
+
+    ((char*)response.binary_body)[response.binary_body_length - 1] = '\0';
+    printf("RESULT: %s\n", (char*)response.binary_body);
+
+    ulfius_clean_request(&request);
+    ulfius_clean_response(&response);
+
+
+    // checking loopback resource pool config
+    printf("Testing put on repo\n");
+    memset(&common.ue_repo.rp, 0x00, sizeof(common.ue_repo.rp));
+
+    ulfius_init_request(&request);
+    ulfius_init_response(&response);
+
+    request.http_url = o_strdup("http://localhost:13000/phy/repo");
+    request.http_verb = o_strdup("PUT");
+
+    struct _u_map req_headers;
+    u_map_init(&req_headers);
+    u_map_put(&req_headers, "Content-Type", "application/json");
+
+    u_map_copy_into(request.map_header, &req_headers);
+
+    request.binary_body = o_strdup("{\"should_not_update\": 69, \"sizeSubchannel_r14\": 5, \"startRB_Subchannel_r14\": 33, \"numSubchannel_r14\": 2}\0");
+    request.binary_body_length = o_strlen((char *)request.binary_body);
+
+    ret = ulfius_send_http_request(&request, &response);
+    if (U_OK != ret) {
+      printf("ulfius_send_http_request failed with %d\n", ret);
+    }
+
+    printf("respones body %p size %ld addr is at %s\n", response.binary_body, response.binary_body_length, request.http_url);
+
+    ((char*)response.binary_body)[response.binary_body_length - 1] = '\0';
+    printf("RESULT: %s\n", (char*)response.binary_body);
+
+    u_map_clean(&req_headers);
+
+    ulfius_clean_request(&request);
+    ulfius_clean_response(&response);
+
+    if( !(common.ue_repo.rp.sizeSubchannel_r14 == 5
+          && common.ue_repo.rp.startRB_Subchannel_r14 == 33
+          && common.ue_repo.rp.numSubchannel_r14 == 2)) {
+      printf("Failed to set new resource pool configuration.\n");
+      return -1;
+    }
+
+    // this keeps the server running for manual testing
+    usleep(ttl*1e6);
+
+    srsue::g_restapi.stop();
+  }
+
+  ulfius_stop_framework(&r.instance);
+  ulfius_clean_instance(&r.instance);
+
   return 0;
 }

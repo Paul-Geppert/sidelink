@@ -1,19 +1,38 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
+ * This file is part of srsLTE.
  *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsUE library.
- *
- * srsUE is free software: you can redistribute it and/or modify
+ * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of
  * the License, or (at your option) any later version.
  *
- * srsUE is distributed in the hope that it will be useful,
+ * srsLTE is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
@@ -23,7 +42,6 @@
  * and at http://www.gnu.org/licenses/.
  *
  */
-
 
 /******************************************************************************
  *  File:         timers.h
@@ -39,6 +57,8 @@
 #include <stdint.h>
 #include <vector>
 #include <time.h>
+
+#include "srslte/srslte.h"
 
 namespace srslte {
   
@@ -143,12 +163,12 @@ public:
       used_timers[i] = false;
       nof_used_timers--;
     } else {
-      fprintf(stderr, "Error releasing timer id=%d: nof_used_timers=%d, nof_timers=%d\n", i, nof_used_timers, nof_timers);
+      ERROR("Error releasing timer id=%d: nof_used_timers=%d, nof_timers=%d\n", i, nof_used_timers, nof_timers);
     }
   }
   uint32_t get_unique_id() {
     if (nof_used_timers >= nof_timers) {
-      fprintf(stderr, "Error getting unique timer id: no more timers available\n");
+      ERROR("Error getting unique timer id: no more timers available\n");
       return 0;
     } else {
       for (uint32_t i=0;i<nof_timers;i++) {
@@ -158,8 +178,9 @@ public:
           return i;
         }
       }
-      fprintf(stderr, "Error getting unique timer id: no more timers available but nof_used_timers=%d, nof_timers=%d\n",
-              nof_used_timers, nof_timers);
+      ERROR("Error getting unique timer id: no more timers available but nof_used_timers=%d, nof_timers=%d\n",
+            nof_used_timers,
+            nof_timers);
       return 0;
     }
   }

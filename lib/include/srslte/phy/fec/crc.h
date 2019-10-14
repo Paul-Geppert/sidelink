@@ -1,12 +1,31 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
- *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsLTE library.
+ * This file is part of srsLTE.
  *
  * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -63,7 +82,21 @@ SRSLTE_API uint32_t srslte_crc_attach(srslte_crc_t *h,
 
 SRSLTE_API uint32_t srslte_crc_attach_byte(srslte_crc_t *h, 
                                            uint8_t *data, 
-                                           int len); 
+                                           int len);
+
+static inline void srslte_crc_checksum_put_byte(srslte_crc_t *h, uint8_t byte) {
+
+  // Polynom order 8, 16, 24 or 32 only.
+  int ord = h->order - 8;
+  uint64_t crc = h->crcinit;
+
+  crc = (crc << 8) ^ h->table[((crc >> (ord)) & 0xff) ^ byte];
+  h->crcinit = crc;
+}
+
+static inline uint64_t srslte_crc_checksum_get(srslte_crc_t *h) {
+  return (h->crcinit  & h->crcmask);
+}
 
 SRSLTE_API uint32_t srslte_crc_checksum_byte(srslte_crc_t *h, 
                                              uint8_t *data, 

@@ -1,12 +1,31 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
- *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsLTE library.
+ * This file is part of srsLTE.
  *
  * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -23,7 +42,6 @@
  * and at http://www.gnu.org/licenses/.
  *
  */
-
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -89,7 +107,7 @@ void parse_args(int argc, char **argv) {
     case 'p':
       nof_prb = atoi(argv[optind]);
       if (!srslte_nofprb_isvalid(nof_prb)) {
-        fprintf(stderr, "Invalid number of UL RB %d\n", nof_prb);
+        ERROR("Invalid number of UL RB %d\n", nof_prb);
         exit(-1);
       }
       break;
@@ -139,7 +157,7 @@ int main(int argc, char **argv) {
   srslte_rf_t rf; 
   printf("Opening RF device...\n");
   if (srslte_rf_open(&rf, rf_args)) {
-    fprintf(stderr, "Error opening rf\n");
+    ERROR("Error opening rf\n");
     exit(-1);
   }
   srslte_rf_set_master_clock_rate(&rf, 30.72e6);        
@@ -159,9 +177,9 @@ int main(int argc, char **argv) {
   printf("Set TX/RX rate: %.2f MHz\n", (float) srate / 1000000);
   printf("Set RX gain:    %.1f dB\n", srslte_rf_set_rx_gain(&rf, rf_rx_gain));
   printf("Set TX gain:    %.1f dB\n", srslte_rf_set_tx_gain(&rf, srslte_rf_tx_gain));
-  printf("Set TX/RX freq: %.2f MHz\n", srslte_rf_set_rx_freq(&rf, rf_freq) / 1000000);
-  srslte_rf_set_tx_freq(&rf, rf_freq);
-  
+  printf("Set TX/RX freq: %.2f MHz\n", srslte_rf_set_rx_freq(&rf, 0, rf_freq) / 1000000);
+  srslte_rf_set_tx_freq(&rf, 0, rf_freq);
+
   sleep(1);
   
   if (input_filename) {

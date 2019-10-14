@@ -1,29 +1,5 @@
-/**
-* Copyright 2013-2019 
-* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
-*
-* This file is part of the HHI Sidelink.
-*
-* HHI Sidelink is under the terms of the GNU Affero General Public License
-* as published by the Free Software Foundation version 3.
-*
-* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
-* without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-*
-* A copy of the GNU Affero General Public License can be found in
-* the LICENSE file in the top-level directory of this distribution
-* and at http://www.gnu.org/licenses/.
-*
-* The HHI Sidelink is based on srsLTE.
-* All necessary files and sources from srsLTE are part of HHI Sidelink.
-* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
-* srsLTE can be found under:
-* https://github.com/srsLTE/srsLTE
-*/
-
 #
-# Copyright 2013-2017 Software Radio Systems Limited
+# Copyright 2013-2019 Software Radio Systems Limited
 #
 # This file is part of srsLTE
 #
@@ -34,7 +10,7 @@
 #
 # srsLTE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU Affero General Public License for more details.
 #
 # A copy of the GNU Affero General Public License can be found in
@@ -43,7 +19,7 @@
 #
 
 add_executable(usim_test usim_test.cc)
-target_link_libraries(usim_test srsue_upper srslte_upper srslte_phy)
+target_link_libraries(usim_test srsue_upper srslte_upper srslte_phy rrc_asn1)
 add_test(usim_test usim_test)
 
 if(HAVE_PCSC)
@@ -52,12 +28,16 @@ if(HAVE_PCSC)
 endif(HAVE_PCSC)
 
 add_executable(rrc_reconfig_test rrc_reconfig_test.cc)
-target_link_libraries(rrc_reconfig_test srsue_upper srslte_upper srslte_phy)
+target_link_libraries(rrc_reconfig_test srsue_upper srslte_upper srslte_phy rrc_asn1)
 add_test(rrc_reconfig_test rrc_reconfig_test)
 
 add_executable(nas_test nas_test.cc)
-target_link_libraries(nas_test srsue_upper srslte_upper srslte_phy)
+target_link_libraries(nas_test srsue_upper srslte_upper srslte_phy rrc_asn1)
 add_test(nas_test nas_test)
+
+add_executable(tft_test tft_test.cc)
+target_link_libraries(tft_test srsue_upper srslte_upper srslte_phy)
+add_test(tft_test tft_test)
 
 ########################################################################
 # Option to run command after build (useful for remote builds)

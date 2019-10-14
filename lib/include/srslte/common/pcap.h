@@ -1,19 +1,38 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
+ * This file is part of srsLTE.
  *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsUE library.
- *
- * srsUE is free software: you can redistribute it and/or modify
+ * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of
  * the License, or (at your option) any later version.
  *
- * srsUE is distributed in the hope that it will be useful,
+ * srsLTE is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
@@ -35,7 +54,7 @@
 #define MAC_LTE_DLT  147
 #define NAS_LTE_DLT  148
 #define RLC_LTE_DLT  149 // UDP needs to be selected as protocol
-
+#define S1AP_LTE_DLT  150 
 
 /* This structure gets written to the start of the file */
 typedef struct pcap_hdr_s {
@@ -82,6 +101,7 @@ typedef struct pcaprec_hdr_s {
 #define MAC_LTE_PREDFINED_DATA_TAG  0x05
 #define MAC_LTE_RETX_TAG            0x06
 #define MAC_LTE_CRC_STATUS_TAG      0x07
+#define MAC_LTE_NB_MODE_TAG         0x0F
 
 
 
@@ -97,6 +117,8 @@ typedef struct MAC_Context_Info_t {
 
     unsigned short sysFrameNumber;
     unsigned short subFrameNumber;
+
+    unsigned char  nbiotMode;
 } MAC_Context_Info_t;
 
 /* Context information for every NAS PDU that will be logged */
@@ -165,6 +187,10 @@ typedef struct {
 #define RLC_LTE_PAYLOAD_TAG      0x01
 
 
+/* Context information for every S1AP PDU that will be logged */
+typedef struct S1AP_Context_Info_s {
+  // No Context yet
+} S1AP_Context_Info_t;
 
 /**************************************************************************
  * API functions for opening/closing LTE PCAP files                       *
@@ -251,6 +277,10 @@ inline int LTE_PCAP_MAC_WritePDU(FILE *fd, MAC_Context_Info_t *context,
     /* CRC Status */
     context_header[offset++] = MAC_LTE_CRC_STATUS_TAG;
     context_header[offset++] = context->crcStatusOK;
+
+    /* NB-IoT mode tag */
+    context_header[offset++] = MAC_LTE_NB_MODE_TAG;
+    context_header[offset++] = context->nbiotMode;
 
     /* Data tag immediately preceding PDU */
     context_header[offset++] = MAC_LTE_PAYLOAD_TAG;
@@ -393,6 +423,39 @@ inline int LTE_PCAP_RLC_WritePDU(FILE *fd, RLC_Context_Info_t *context,
     // Write everything to file
     fwrite(&packet_header, sizeof(pcaprec_hdr_t), 1, fd);
     fwrite(context_header, 1, offset, fd);
+    fwrite(PDU, 1, length, fd);
+
+    return 1;
+}
+
+/**************************************************************************
+ * API functions for writing S1AP PCAP files                           *
+ **************************************************************************/
+
+/* Write an individual PDU (PCAP packet header + s1ap-context + s1ap-pdu) */
+inline int LTE_PCAP_S1AP_WritePDU(FILE *fd, S1AP_Context_Info_t *context,
+                                 const unsigned char *PDU, unsigned int length)
+{
+    pcaprec_hdr_t packet_header;
+
+    /* Can't write if file wasn't successfully opened */
+    if (fd == NULL) {
+        printf("Error: Can't write to empty file handle\n");
+        return 0;
+    }
+
+    /****************************************************************/
+    /* PCAP Header                                                  */
+    struct timeval t;
+    gettimeofday(&t, NULL);
+    packet_header.ts_sec = t.tv_sec;
+    packet_header.ts_usec = t.tv_usec;
+    packet_header.incl_len = length;
+    packet_header.orig_len = length;
+
+    /***************************************************************/
+    /* Now write everything to the file                            */
+    fwrite(&packet_header, sizeof(pcaprec_hdr_t), 1, fd);
     fwrite(PDU, 1, length, fd);
 
     return 1;

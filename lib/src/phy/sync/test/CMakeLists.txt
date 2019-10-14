@@ -1,5 +1,5 @@
 #
-# Copyright 2013-2017 Software Radio Systems Limited
+# Copyright 2013-2019 Software Radio Systems Limited
 #
 # This file is part of srsLTE
 #
@@ -10,15 +10,13 @@
 #
 # srsLTE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU Affero General Public License for more details.
 #
 # A copy of the GNU Affero General Public License can be found in
 # the LICENSE file in the top-level directory of this distribution
 # and at http://www.gnu.org/licenses/.
 #
-
-find_package(SRSGUI)
 
 ########################################################################
 # PROGRAM TO DEBUG PSS FROM USRP  
@@ -32,15 +30,13 @@ if(UHD_FOUND)
   target_link_libraries(pss_usrp srslte_phy srslte_rf)
 endif(UHD_FOUND)
 
-
 if(SRSGUI_FOUND)
   include_directories(${SRSGUI_INCLUDE_DIRS})
   target_link_libraries(pss_file ${SRSGUI_LIBRARIES})
   if(UHD_FOUND)
     target_link_libraries(pss_usrp ${SRSGUI_LIBRARIES})
   endif(UHD_FOUND)
-else(SRSGUI_FOUND)
-  add_definitions(-DDISABLE_GRAPHICS)
+  add_definitions(-DENABLE_GUI)
 endif(SRSGUI_FOUND)
 
 ########################################################################

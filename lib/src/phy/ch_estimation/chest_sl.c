@@ -1,4 +1,28 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/**
  *
  * \section COPYRIGHT
  *
@@ -108,13 +132,14 @@ int srslte_chest_sl_init(srslte_chest_sl_t *q, uint32_t max_prb)
       goto clean_exit; 
     }
 
+    q->rsrp_neighbour = false;
     q->smooth_filter_len = 7;
     //srslte_chest_sl_set_smooth_filter3_coeff(q, 0.3333);
     srslte_chest_set_rect_filter(q->smooth_filter, q->smooth_filter_len);
   
     q->dmrs_signal_configured = false;
 
-    if (srslte_refsignal_dmrs_pusch_pregen_init(&q->dmrs_signal, &q->dmrs_pregen, max_prb)) {
+    if (srslte_refsignal_dmrs_pusch_pregen_init(&q->dmrs_pregen, max_prb)) {
       fprintf(stderr, "Error allocating memory for pregenerated signals\n");
       goto clean_exit;
     }
@@ -190,8 +215,8 @@ void srslte_chest_sl_set_cfg(srslte_chest_sl_t *q,
                              srslte_pucch_cfg_t *pucch_cfg, 
                              srslte_refsignal_srs_cfg_t *srs_cfg)
 {
-  srslte_refsignal_ul_set_cfg(&q->dmrs_signal, pusch_cfg, pucch_cfg, srs_cfg);
-  srslte_refsignal_dmrs_pusch_pregen(&q->dmrs_signal, &q->dmrs_pregen);
+  // srslte_refsignal_ul_set_cfg(&q->dmrs_signal, pusch_cfg, pucch_cfg, srs_cfg);
+  srslte_refsignal_dmrs_pusch_pregen(&q->dmrs_signal, &q->dmrs_pregen, pusch_cfg);
   q->dmrs_signal_configured = true; 
 }
 
@@ -372,7 +397,8 @@ int srslte_chest_ul_estimate(srslte_chest_ul_t *q, cf_t *input, cf_t *ce,
 }
 #endif
 
-int srslte_chest_sl_estimate_psbch(srslte_chest_sl_t *q, cf_t *input, cf_t *ce, srslte_sl_mode_t sl_mode)
+int srslte_chest_sl_estimate_psbch(srslte_chest_sl_t *q, cf_t *input, cf_t *ce, srslte_sl_mode_t sl_mode, 
+                                                 uint32_t port_id, uint32_t rxant_id) //JL-s_rsrp, added last two input.
                                   //  srslte_pucch_format_t format, uint32_t n_pucch, uint32_t sf_idx, 
                                   //  uint8_t *pucch2_ack_bits) 
 {
@@ -395,6 +421,13 @@ int srslte_chest_sl_estimate_psbch(srslte_chest_sl_t *q, cf_t *input, cf_t *ce, 
   
   /* Get references from the input signal */
   srslte_refsignal_sl_dmrs_psbch_get(&q->dmrs_signal, sl_mode, input, q->pilot_recv_signal);
+
+    /* JL-s_rsrp, Compute s_rsrp for the channel estimates in this port */
+  if (q->rsrp_neighbour) {
+    double energy = cabs(srslte_vec_acc_cc(q->pilot_estimates, nrefs_sf)/nrefs_sf);
+    q->rsrp_corr[rxant_id][port_id] = energy*energy;
+  }
+  q->s_rsrp[rxant_id][port_id] = srslte_vec_avg_power_cf(q->pilot_recv_signal, nrefs_sf);
   
   // generate psbch dmrs
   srslte_refsignal_sl_dmrs_psbch_gen(&q->dmrs_signal, nof_prb_psbch, 0, 0, q->pilot_known_signal);

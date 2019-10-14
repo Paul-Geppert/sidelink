@@ -1,12 +1,31 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
- *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsLTE library.
+ * This file is part of srsLTE.
  *
  * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -91,6 +110,8 @@ typedef struct SRSLTE_API {
 
   uint32_t max_frame_size;
 
+  srslte_frame_type_t frame_type;
+  bool                detect_frame_type;
 
   // variables for various CFO estimation methods
   bool cfo_cp_enable;
@@ -117,6 +138,13 @@ typedef struct SRSLTE_API {
   bool pss_filtering_enabled;
   cf_t sss_filt[SRSLTE_SYMBOL_SZ_MAX];
   cf_t pss_filt[SRSLTE_SYMBOL_SZ_MAX];
+
+  bool              sss_generated;
+  bool              sss_detected;
+  bool              sss_available;
+  srslte_dft_plan_t idftp_sss;
+  cf_t              sss_recv[SRSLTE_SYMBOL_SZ_MAX];
+  cf_t              sss_signal[2][SRSLTE_SYMBOL_SZ_MAX];
 
 }srslte_sync_t;
 
@@ -182,6 +210,8 @@ SRSLTE_API void srslte_sync_set_em_alpha(srslte_sync_t *q,
 SRSLTE_API int srslte_sync_set_N_id_2(srslte_sync_t *q, 
                                       uint32_t N_id_2);
 
+SRSLTE_API int srslte_sync_set_N_id_1(srslte_sync_t* q, uint32_t N_id_1);
+
 /* Gets the Physical CellId from the last call to synch_run() */
 SRSLTE_API int srslte_sync_get_cell_id(srslte_sync_t *q);
 
@@ -216,10 +246,10 @@ SRSLTE_API void srslte_sync_set_cfo_pss_enable(srslte_sync_t *q,
 SRSLTE_API void srslte_sync_set_cfo_tol(srslte_sync_t *q,
                                         float tol);
 
-/* Sets the exponential moving average coefficient for CFO averaging */
-SRSLTE_API void srslte_sync_set_cfo_ema_alpha(srslte_sync_t *q, 
-                                              float alpha);
+SRSLTE_API void srslte_sync_set_frame_type(srslte_sync_t* q, srslte_frame_type_t frame_type);
 
+/* Sets the exponential moving average coefficient for CFO averaging */
+SRSLTE_API void srslte_sync_set_cfo_ema_alpha(srslte_sync_t* q, float alpha);
 
 /* Gets the CP length estimation from the last call to synch_run() */
 SRSLTE_API srslte_cp_t srslte_sync_get_cp(srslte_sync_t *q);
@@ -236,9 +266,10 @@ SRSLTE_API srslte_pss_t* srslte_sync_get_cur_pss_obj(srslte_sync_t *q);
 
 SRSLTE_API bool srslte_sync_sss_detected(srslte_sync_t *q);
 
+SRSLTE_API bool srslte_sync_sss_available(srslte_sync_t* q);
+
 /* Enables/Disables CP detection  */
-SRSLTE_API void srslte_sync_cp_en(srslte_sync_t *q, 
-                                  bool enabled);
+SRSLTE_API void srslte_sync_cp_en(srslte_sync_t* q, bool enabled);
 
 #endif // SRSLTE_SYNC_H
 

@@ -1,19 +1,38 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
+ * This file is part of srsLTE.
  *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsUE library.
- *
- * srsUE is free software: you can redistribute it and/or modify
+ * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of
  * the License, or (at your option) any later version.
  *
- * srsUE is distributed in the hope that it will be useful,
+ * srsLTE is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
@@ -27,7 +46,8 @@
 #ifndef SRSLTE_RLC_COMMON_H
 #define SRSLTE_RLC_COMMON_H
 
-#include "srslte/upper/rlc_interface.h"
+#include "srslte/common/block_queue.h"
+#include <stdlib.h>
 
 namespace srslte {
 
@@ -37,16 +57,8 @@ namespace srslte {
  ***************************************************************************/
 
 #define RLC_AM_WINDOW_SIZE  512
+#define RLC_MAX_SDU_SIZE ((1<<11)-1) // Length of LI field is 11bits
 
-typedef enum{
-  RLC_MODE_TM = 0,
-  RLC_MODE_UM,
-  RLC_MODE_AM,
-  RLC_MODE_N_ITEMS,
-}rlc_mode_t;
-static const char rlc_mode_text[RLC_MODE_N_ITEMS][20] = {"Transparent Mode",
-                                                         "Unacknowledged Mode",
-                                                         "Acknowledged Mode"};
 
 typedef enum{
   RLC_FI_FIELD_START_AND_END_ALIGNED = 0,
@@ -156,27 +168,85 @@ public:
   const static int RLC_BUFFER_NOF_PDU = 128;
 
   virtual ~rlc_common() {}
-  virtual void init(srslte::log                       *rlc_entity_log_,
-                    uint32_t                           lcid_,
-                    srsue::pdcp_interface_rlc         *pdcp_,
-                    srsue::rrc_interface_rlc          *rrc_,
-                    srslte::mac_interface_timers      *mac_timers_) = 0;
-  virtual void configure(srslte_rlc_config_t cnfg) = 0;
-  virtual void stop() = 0;
-  virtual void empty_queue() = 0; 
+  virtual bool configure(rlc_config_t cnfg) = 0;
+  virtual void stop()                       = 0;
+  virtual void reestablish()                = 0;
+  virtual void empty_queue()                = 0;
+
+  bool suspend()
+  {
+    if (is_suspended) {
+      return false;
+    }
+    is_suspended = true;
+    return true;
+  }
+
+  // Pops all PDUs from queue and calls write_pdu() method for the bearer type
+  bool resume()
+  {
+    if (!is_suspended) {
+      return false;
+    }
+    pdu_t p;
+    // Do not block
+    while (rx_pdu_resume_queue.try_pop(&p)) {
+      write_pdu(p.payload, p.nof_bytes);
+      free(p.payload);
+    }
+    is_suspended = false;
+    return true;
+  }
+
+  void write_pdu_s(uint8_t* payload, uint32_t nof_bytes)
+  {
+    if (is_suspended) {
+      queue_pdu(payload, nof_bytes);
+    } else {
+      write_pdu(payload, nof_bytes);
+    }
+  }
 
   virtual rlc_mode_t    get_mode() = 0;
   virtual uint32_t      get_bearer() = 0;
 
+  virtual uint32_t get_num_tx_bytes() = 0;
+  virtual uint32_t get_num_rx_bytes() = 0;
+  virtual void reset_metrics() = 0;
+
   // PDCP interface
-  virtual void write_sdu(byte_buffer_t *sdu) = 0;
-  virtual void write_sdu_nb(byte_buffer_t *sdu) = 0;
+  virtual void write_sdu(unique_byte_buffer_t sdu, bool blocking) = 0;
 
   // MAC interface
+  virtual bool     has_data() = 0;
   virtual uint32_t get_buffer_state() = 0;
-  virtual uint32_t get_total_buffer_state() = 0;
   virtual int      read_pdu(uint8_t *payload, uint32_t nof_bytes) = 0;
   virtual void     write_pdu(uint8_t *payload, uint32_t nof_bytes) = 0;
+
+private:
+  bool is_suspended = false;
+
+  // Enqueues the PDU in the resume queue
+  void queue_pdu(uint8_t* payload, uint32_t nof_bytes)
+  {
+    pdu_t p     = {};
+    p.nof_bytes = nof_bytes;
+    p.payload   = (uint8_t*)malloc(nof_bytes);
+    memcpy(p.payload, payload, nof_bytes);
+
+    // Do not block ever
+    if (!rx_pdu_resume_queue.try_push(p)) {
+      fprintf(stderr, "Error dropping PDUs while bearer suspended. Queue should be unbounded\n");
+      return;
+    }
+  }
+
+  typedef struct {
+    uint8_t* payload;
+    uint32_t nof_bytes;
+  } pdu_t;
+
+  block_queue<pdu_t> rx_pdu_resume_queue;
 };
 
 } // namespace srslte

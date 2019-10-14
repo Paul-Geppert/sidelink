@@ -1,19 +1,38 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
+ * This file is part of srsLTE.
  *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsUE library.
- *
- * srsUE is free software: you can redistribute it and/or modify
+ * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of
  * the License, or (at your option) any later version.
  *
- * srsUE is distributed in the hope that it will be useful,
+ * srsLTE is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
@@ -54,6 +73,7 @@ public:
   log_filter();
   log_filter(std::string layer);
   log_filter(std::string layer, logger *logger_, bool tti=false);
+  ~log_filter();
 
   void init(std::string layer, logger *logger_, bool tti=false);
 
@@ -68,6 +88,8 @@ public:
   void info_hex(const uint8_t *hex, int size, const char * message, ...)    __attribute__((format (printf, 4, 5)));
   void debug_hex(const uint8_t *hex, int size, const char * message, ...)   __attribute__((format (printf, 4, 5)));
 
+  srslte::LOG_LEVEL_ENUM get_level(std::string l);
+
   class time_itf {
   public:
     virtual srslte_timestamp_t get_time() = 0;
@@ -80,7 +102,7 @@ public:
 
   void set_time_src(time_itf *source, time_format_t format);
 
-private:
+protected:
   logger *logger_h;
   bool    do_tti;
 

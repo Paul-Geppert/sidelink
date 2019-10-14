@@ -1,12 +1,31 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
- *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsLTE library.
+ * This file is part of srsLTE.
  *
  * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -125,7 +144,7 @@ int main(int argc, char **argv) {
 
   printf("Opening RF device...\n");
   if (srslte_rf_open_multi(&rf, rf_args, nof_rx_antennas)) {
-    fprintf(stderr, "Error opening rf\n");
+    ERROR("Error opening rf\n");
     exit(-1);
   }
   srslte_rf_set_master_clock_rate(&rf, 30.72e6);        
@@ -135,7 +154,7 @@ int main(int argc, char **argv) {
   sigaddset(&sigset, SIGINT);
   sigprocmask(SIG_UNBLOCK, &sigset, NULL);
 
-  printf("Set RX freq: %.2f MHz\n", srslte_rf_set_rx_freq(&rf, rf_freq) / 1000000);
+  printf("Set RX freq: %.2f MHz\n", srslte_rf_set_rx_freq(&rf, nof_rx_antennas, rf_freq) / 1000000);
   printf("Set RX gain: %.2f dB\n", srslte_rf_set_rx_gain(&rf, rf_gain));
   float srate = srslte_rf_set_rx_srate(&rf, rf_rate); 
   if (srate != rf_rate) {
@@ -146,7 +165,7 @@ int main(int argc, char **argv) {
     }
     srate = srslte_rf_set_rx_srate(&rf, rf_rate);
     if (srate != rf_rate) {
-      fprintf(stderr, "Errror setting samplign frequency %.2f MHz\n", rf_rate*1e-6);
+      ERROR("Error setting samplign frequency %.2f MHz\n", rf_rate * 1e-6);
       exit(-1);
     }
   }
@@ -160,7 +179,7 @@ int main(int argc, char **argv) {
         && keep_running){
     n = srslte_rf_recv_with_time_multi(&rf, (void**) buffer, buflen, true, NULL, NULL);
     if (n < 0) {
-      fprintf(stderr, "Error receiving samples\n");
+      ERROR("Error receiving samples\n");
       exit(-1);
     }
     

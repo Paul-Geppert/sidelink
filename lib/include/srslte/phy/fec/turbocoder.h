@@ -1,12 +1,31 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
- *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsLTE library.
+ * This file is part of srsLTE.
  *
  * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -40,6 +59,7 @@
 
 #include "srslte/config.h"
 #include "srslte/phy/fec/tc_interl.h"
+#include "srslte/phy/fec/crc.h"
 
 #define SRSLTE_TCOD_MAX_LEN_CB_BYTES (6144/8)
 
@@ -68,10 +88,13 @@ SRSLTE_API int srslte_tcod_encode(srslte_tcod_t *h,
                                   uint8_t *output, 
                                   uint32_t long_cb);
 
-SRSLTE_API int srslte_tcod_encode_lut(srslte_tcod_t *h, 
-                                      uint8_t *input, 
+SRSLTE_API int srslte_tcod_encode_lut(srslte_tcod_t *h,
+                                      srslte_crc_t *crc_tb,
+                                      srslte_crc_t *crc_cb,
+                                      uint8_t *input,
                                       uint8_t *parity, 
-                                      uint32_t cblen_idx); 
+                                      uint32_t cblen_idx,
+                                      bool last_cb);
 
 SRSLTE_API void srslte_tcod_gentable(); 
 

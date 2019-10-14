@@ -1,4 +1,28 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/**
  *
  * \section COPYRIGHT
  *
@@ -39,6 +63,7 @@
 #include <srslte/phy/common/phy_common.h>
 #include "srslte/phy/io/filesink.h"
 #include "srslte/srslte.h"
+#include "srslte/common/crash_handler.h"
 
 #include "srslte/phy/ue_sl/ue_sl_mib.h"
 
@@ -61,16 +86,21 @@ cell_search_cfg_t cell_detect_config = {
 
 //#define STDOUT_COMPACT
 
-#ifndef DISABLE_GRAPHICS
+#ifdef ENABLE_GUI
+
 #include "srsgui/srsgui.h"
+
 void init_plots();
-pthread_t plot_thread; 
-sem_t plot_sem; 
-uint32_t plot_sf_idx=0;
-bool plot_track = true; 
-#endif
-char *output_file_name;
-#define PRINT_CHANGE_SCHEDULIGN
+
+pthread_t plot_thread;
+sem_t     plot_sem;
+uint32_t  plot_sf_idx       = 0;
+bool      plot_track        = true;
+bool      enable_mbsfn_plot = false;
+#endif /* ENABLE_GUI */
+char* output_file_name;
+//#define PRINT_CHANGE_SCHEDULING
+
 
 //#define CORRECT_SAMPLE_OFFSET
 
@@ -195,7 +225,7 @@ void usage(prog_args_t *args, char *prog) {
   printf("\t-F Enable RS-based CFO correction [Default %s]\n", !args->enable_cfo_ref?"Disabled":"Enabled");
   printf("\t-R Average channel estimates on 1 ms [Default %s]\n", !args->average_subframe?"Disabled":"Enabled");
   printf("\t-t Add time offset [Default %d]\n", args->time_offset);
-#ifndef DISABLE_GRAPHICS
+#ifdef ENABLE_GUI
   printf("\t-d disable plots [Default enabled]\n");
   printf("\t-D disable all but constellation plots [Default enabled]\n");
 #else
@@ -360,6 +390,7 @@ srslte_ue_sl_mib_t ue_sl_mib;
 prog_args_t prog_args; 
 
 srslte_repo_t repo;
+uint32_t pkt_errors = 0, pkt_total = 0, nof_detected = 0, pmch_pkt_errors = 0, pmch_pkt_total = 0, nof_trials = 0;
 
 uint32_t sfn = 0; // system frame number
 srslte_netsink_t net_sink, net_sink_signal;
@@ -464,7 +495,7 @@ int main(int argc, char **argv) {
 
     /* set receiver frequency */
     printf("Tunning receiver to %.3f MHz\n", (prog_args.rf_freq + prog_args.file_offset_freq)/1000000);
-    srslte_rf_set_rx_freq(&rf, prog_args.rf_freq + prog_args.file_offset_freq);
+    srslte_rf_set_rx_freq(&rf, 0, prog_args.rf_freq + prog_args.file_offset_freq);
     srslte_rf_rx_wait_lo_locked(&rf);
 
 
@@ -592,9 +623,9 @@ int main(int argc, char **argv) {
   ue_sl_sync.cfo_correct_enable_find = true;
   srslte_sync_sl_set_cfo_cp_enable(&ue_sl_sync.sfind, false, 0);
 
-
-  srslte_chest_dl_cfo_estimate_enable(&ue_dl.chest, prog_args.enable_cfo_ref, 1023);
-  srslte_chest_dl_average_subframe(&ue_dl.chest, prog_args.average_subframe);
+  // @todo: (rl) fix after merge of 19_06
+  // srslte_chest_dl_cfo_estimate_enable(&ue_dl.chest, prog_args.enable_cfo_ref, 1023);
+  // srslte_chest_dl_average_subframe(&ue_dl.chest, prog_args.average_subframe);
 
   /* Configure downlink receiver for the SI-RNTI since will be the only one we'll use */
   srslte_ue_dl_set_rnti(&ue_dl, prog_args.rnti); 
@@ -608,7 +639,7 @@ int main(int argc, char **argv) {
   sf_cnt = 0;
 
 
-#ifndef DISABLE_GRAPHICS
+#ifdef ENABLE_GUI
   if (!prog_args.disable_plots) {
     init_plots(cell);    
     sleep(1);
@@ -667,9 +698,9 @@ int main(int argc, char **argv) {
       /* If a new line is detected set verbose level to Debug */
       if (fgets(input, sizeof(input), stdin)) {
         srslte_verbose = SRSLTE_VERBOSE_DEBUG;
-        ue_dl.pkt_errors = 0;
-        ue_dl.pkts_total = 0;
-        ue_dl.nof_detected = 0;
+        pkt_errors = 0;
+        pkt_total = 0;
+        nof_detected = 0;
         nof_trials = 0;
       }
     }
@@ -689,6 +720,10 @@ int main(int argc, char **argv) {
 
       uint32_t sfidx = srslte_ue_sl_sync_get_sfidx(&ue_sl_sync);
 
+      if(sf_cnt % 1000 == 0) {
+        printf("rssi: %f\n", srslte_rf_get_rssi(&rf));
+      }
+
       switch (state) {
         case DECODE_MIB:
           if (sfidx == 0) {
@@ -701,7 +736,10 @@ int main(int argc, char **argv) {
               //srslte_cell_fprint(stdout, &cell, sfn);
               //printf("Decoded MIB. SFN: %d, offset: %d\n", sfn, sfn_offset);
               sfn = (sfn + sfn_offset)%1024; 
-              state = DECODE_MIB;//DECODE_PDSCH;               
+              state = DECODE_MIB;//DECODE_PDSCH;
+
+              // realign subframe counter
+              sf_cnt = (sf_cnt - (sf_cnt % 10)) % 10240;
             }
           } else {
             int32_t decoded_bytes = 0;
@@ -709,6 +747,10 @@ int main(int argc, char **argv) {
                                       &repo,
                                       data[0],
                                       &decoded_bytes);
+
+            if(decoded_bytes > 0) {
+              printf("Successfully decoded %d bytes in sf %d\n", decoded_bytes, sf_cnt);
+            }
 
             if (prog_args.net_port > 0 && decoded_bytes > 0) {
               printf("TCP %d bytes\n", decoded_bytes);
@@ -719,7 +761,7 @@ int main(int argc, char **argv) {
 
           }
 
-          #ifndef DISABLE_GRAPHICS
+          #ifdef ENABLE_GUI
               plot_sf_idx = sfn;
               plot_track = true;
               sem_post(&plot_sem);
@@ -928,18 +970,14 @@ int main(int argc, char **argv) {
         if (sfn == 1024) {
           sfn = 0; 
           PRINT_LINE_ADVANCE_CURSOR();
-          ue_dl.pdsch_pkt_errors = 0;
-          ue_dl.pdsch_pkts_total = 0;
-          /*
-          ue_dl.pkt_errors = 0; 
-          ue_dl.pkts_total = 0;
-          ue_dl.nof_detected = 0;           
-          nof_trials = 0;
-          */
+          pkt_errors      = 0;
+          pkt_total       = 0;
+          pmch_pkt_errors = 0;
+          pmch_pkt_total  = 0;
         } 
       }
       
-      #ifndef DISABLE_GRAPHICS
+      #ifdef ENABLE_GUI
       if (!prog_args.disable_plots) {
         if ((sfn%3) == 0 && decode_pdsch) {
           plot_sf_idx = srslte_ue_sl_sync_get_sfidx(&ue_sl_sync);
@@ -952,7 +990,7 @@ int main(int argc, char **argv) {
       printf("Finding PSS... Peak: %8.1f, FrameCnt: %d, State: %d\r", 
         srslte_sync_sl_get_peak_value(&ue_sl_sync.sfind), 
         ue_sl_sync.frame_total_cnt, ue_sl_sync.state);      
-      #ifndef DISABLE_GRAPHICS
+      #ifdef ENABLE_GUI
       if (!prog_args.disable_plots) {
         plot_sf_idx = srslte_ue_sl_sync_get_sfidx(&ue_sl_sync);
         plot_track = false; 
@@ -964,7 +1002,7 @@ int main(int argc, char **argv) {
     sf_cnt++;                  
   } // Main loop
   
-#ifndef DISABLE_GRAPHICS
+#ifdef ENABLE_GUI
   if (!prog_args.disable_plots) {
     if (!pthread_kill(plot_thread, 0)) {
       pthread_kill(plot_thread, SIGHUP);
@@ -1006,7 +1044,7 @@ int main(int argc, char **argv) {
 /**********************************************************************
  *  Plotting Functions
  ***********************************************************************/
-#ifndef DISABLE_GRAPHICS
+#ifdef ENABLE_GUI
 
 
 plot_real_t p_sync, pce;
@@ -1053,10 +1091,11 @@ void *plot_thread_run(void *arg) {
   while(1) {
     sem_wait(&plot_sem);
     
-    uint32_t nof_symbols = ue_dl.pdsch_cfg.nbits[0].nof_re;
+    // @todo: (rl) this fails due to the merge form 18_12 to 19_06
+    uint32_t nof_symbols = 0;//ue_dl.pdsch_cfg.nbits[0].nof_re;
     if (!prog_args.disable_plots_except_constellation) {      
       for (i = 0; i < nof_re; i++) {
-        tmp_plot[i] = 20 * log10f(cabsf(ue_dl.sf_symbols[i]));
+        tmp_plot[i] = 20 * log10f(cabsf(ue_dl.sf_symbols[0][i]));
         if (isinf(tmp_plot[i])) {
           tmp_plot[i] = -80;
         }
@@ -1137,4 +1176,4 @@ void init_plots() {
   }  
 }
 
-#endif
+#endif /* ENABLE_GUI */

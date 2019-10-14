@@ -1,4 +1,28 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/**
  *
  * \section COPYRIGHT
  *
@@ -38,7 +62,9 @@
 #include <semaphore.h>
 #include <srslte/phy/common/phy_common.h>
 #include "srslte/phy/io/filesink.h"
+
 #include "srslte/srslte.h"
+#include "srslte/common/crash_handler.h"
 
 #include "srslte/phy/ue_sl/ue_sl_mib.h"
 
@@ -48,7 +74,7 @@
 //#define STDOUT_COMPACT
 
 char *output_file_name;
-#define PRINT_CHANGE_SCHEDULIGN
+// #define PRINT_CHANGE_SCHEDULIGN
 
 //#define CORRECT_SAMPLE_OFFSET
 
@@ -188,7 +214,7 @@ void usage(prog_args_t *args, char *prog) {
   printf("\t-y set the cpu affinity mask [Default %d] \n  ",args->cpu_affinity);
   printf("\t-n nof_subframes [Default %d]\n", args->nof_subframes);
   printf("\t-s frequency channel smooth filter length, must be odd [Default %d]\n", args->smooth_filter_len);
-  printf("\t-S SCI-Bits filename, which indicates, no pscch decoding is required\n", args->scibits_file_name);
+  printf("\t-S SCI-Bits filename, which indicates, no pscch decoding is required\n");
   printf("\t-u remote TCP port to send data (-1 does nothing with it) [Default %d]\n", args->net_port);
   printf("\t-U remote TCP address to send data [Default %s]\n", args->net_address);
   printf("\t-M MBSFN area id [Default %d]\n", args->mbsfn_area_id);

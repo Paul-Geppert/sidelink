@@ -1,12 +1,31 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
- *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsLTE library.
+ * This file is part of srsLTE.
  *
  * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -23,7 +42,6 @@
  * and at http://www.gnu.org/licenses/.
  *
  */
-
 
 #include <strings.h>
 #include "srslte/phy/common/phy_common.h"
@@ -97,7 +115,7 @@ int srslte_sequence_pusch(srslte_sequence_t *seq, uint16_t rnti, uint32_t nslot,
  * 36.211 5.4.2
  */
 int srslte_sequence_pucch(srslte_sequence_t *seq, uint16_t rnti, uint32_t nslot, uint32_t cell_id) {
-  return srslte_sequence_LTE_pr(seq, 20, ((((nslot/2)+1)*(2*cell_id+1))<<16)+rnti);
+  return srslte_sequence_LTE_pr(seq, 12 * 4, ((((nslot / 2) + 1) * (2 * cell_id + 1)) << 16) + rnti);
 }
 
 int srslte_sequence_pmch(srslte_sequence_t *seq, uint32_t nslot, uint32_t mbsfn_id , uint32_t len){

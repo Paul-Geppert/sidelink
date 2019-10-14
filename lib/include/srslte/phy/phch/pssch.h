@@ -1,4 +1,28 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/**
  *
  * \section COPYRIGHT
  *
@@ -49,12 +73,12 @@
 #include "srslte/phy/dft/dft_precoding.h"
 
 typedef struct {
-  srslte_sequence_t seq[SRSLTE_MAX_CODEWORDS][SRSLTE_NSUBFRAMES_X_FRAME];
+  srslte_sequence_t seq[SRSLTE_MAX_CODEWORDS][SRSLTE_NOF_SF_X_FRAME];
   uint32_t cell_id;
   bool sequence_generated;
 } srslte_pssch_user_t;
 
-/* PDSCH object */
+/* PSSCH object */
 typedef struct SRSLTE_API {
   srslte_cell_t cell;
   
@@ -72,7 +96,9 @@ typedef struct SRSLTE_API {
   /* buffers */
   // void buffers are shared for tx and rx
   cf_t *ce[SRSLTE_MAX_PORTS][SRSLTE_MAX_PORTS]; /* Channel estimation (Rx only) */
-  cf_t *symbols[SRSLTE_MAX_PORTS];              /* PDSCH Encoded/Decoded Symbols */
+  cf_t *symbols[SRSLTE_MAX_PORTS];              /* PSSCH Encoded/Decoded Symbols */
+  cf_t *SymSPSRsrp[SRSLTE_MAX_PORTS];  /* Proscessed PSSCH Received Symbols for PSSCH-RSRP calculation. Only included Symb 2, 5, 9 and 12, see PSSCH-RSRP, 36.214 V.14.2.0. See 36.211 V.140700, Ch.9.8.*/
+  cf_t *SymSPSRssi[SRSLTE_MAX_PORTS];  /* Proscessed PSSCH Received Symbols for S-RSSI calculation. Excluded Symb 0 and 13, see S-RSSI, 36.214 V.14.2.0*/
   cf_t *x[SRSLTE_MAX_LAYERS];                   /* Layer mapped */
   cf_t *d[SRSLTE_MAX_CODEWORDS];                /* Modulated/Demodulated codewords */
   void *e[SRSLTE_MAX_CODEWORDS];
@@ -80,6 +106,8 @@ typedef struct SRSLTE_API {
 
   bool csi_enabled;
   float *csi[SRSLTE_MAX_CODEWORDS];             /* Channel Strengh Indicator */
+  float sps_rsrp[10 * Pstep];             /* store the calculated PSSCH-RSRP, size generally 1000. */
+  float sps_rssi[10 * Pstep];             /* store the calculated s-RSSI, size generally 1000. */
 
   /* tx & rx objects */
   srslte_modem_table_t mod[4];
@@ -128,6 +156,8 @@ SRSLTE_API int srslte_pssch_enable_csi(srslte_pssch_t *q,
 SRSLTE_API void srslte_pssch_free_rnti(srslte_pssch_t *q, 
                                       uint16_t rnti);
 
+
+# if 0
 SRSLTE_API int srslte_pssch_cfg(srslte_pssch_cfg_t *cfg,
                                 srslte_cell_t cell, 
                                 srslte_ra_dl_grant_t *grant, 
@@ -143,6 +173,7 @@ SRSLTE_API int srslte_pssch_cfg_mimo(srslte_pssch_cfg_t *cfg,
                                      int rvidx[SRSLTE_MAX_CODEWORDS],
                                      srslte_mimo_type_t mimo_type,
                                      uint32_t pmi);
+#endif
 
 SRSLTE_API int srslte_pssch_encode(srslte_pssch_t *q,
                                          srslte_pssch_cfg_t *cfg,
@@ -202,5 +233,29 @@ SRSLTE_API int srslte_pssch_enable_coworker(srslte_pssch_t *q);
 
 SRSLTE_API uint32_t srslte_pssch_last_noi_cw(srslte_pssch_t *q,
                                              uint32_t cw_idx);
+
+SRSLTE_API int srslte_pssch_get_for_sps_rsrp(cf_t* subframe, 
+                                             cf_t* pssch, 
+                                             srslte_cell_t cell, 
+                                             uint32_t prb_offset,
+                                             uint32_t n_prb);
+
+SRSLTE_API int srslte_pssch_cp_for_sps_rsrp(cf_t* input, 
+                                            cf_t* output, 
+                                            srslte_cell_t cell, 
+                                            uint32_t prb_offset,
+                                            uint32_t n_prb);
+
+SRSLTE_API int srslte_pssch_get_for_sps_rssi(cf_t* subframe, 
+                                             cf_t* pssch, 
+                                             srslte_cell_t cell, 
+                                             uint32_t prb_offset,
+                                             uint32_t n_prb);
+
+SRSLTE_API int srslte_pssch_cp_for_sps_rssi(cf_t* input, 
+                                            cf_t* output, 
+                                            srslte_cell_t cell, 
+                                            uint32_t prb_offset,
+                                            uint32_t n_prb); 
 
 #endif // SRSLTE_PSSCH_H

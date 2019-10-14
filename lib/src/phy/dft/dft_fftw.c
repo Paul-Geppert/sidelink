@@ -1,12 +1,31 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
- *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsLTE library.
+ * This file is part of srsLTE.
  *
  * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -24,12 +43,11 @@
  *
  */
 
-
-#include <math.h>
+#include "srslte/srslte.h"
 #include <complex.h>
 #include <fftw3.h>
+#include <math.h>
 #include <string.h>
-#include <srslte/srslte.h>
 
 #include "srslte/phy/dft/dft.h"
 #include "srslte/phy/utils/vector.h"
@@ -45,7 +63,7 @@
 #define FFTW_TYPE 0
 #endif
 
-pthread_mutex_t fft_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t fft_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void srslte_dft_load() {
 #ifdef FFTW_WISDOM_FILE
@@ -81,8 +99,10 @@ int srslte_dft_replan(srslte_dft_plan_t *plan, const int new_dft_points) {
       return srslte_dft_replan_r(plan,new_dft_points);
     }
   } else {
-    fprintf(stderr, "DFT: Error calling replan: new_dft_points (%d) must be lower or equal "
-      "dft_size passed initially (%d)\n", new_dft_points, plan->init_size);
+    ERROR("DFT: Error calling replan: new_dft_points (%d) must be lower or equal "
+          "dft_size passed initially (%d)\n",
+          new_dft_points,
+          plan->init_size);
     return -1;
   }
 }
@@ -312,7 +332,7 @@ void srslte_dft_run_guru_c(srslte_dft_plan_t *plan) {
   if (plan->is_guru == true) {
     fftwf_execute(plan->p);
   } else {
-    fprintf(stderr, "srslte_dft_run_guru_c: the selected plan is not guru!\n");
+    ERROR("srslte_dft_run_guru_c: the selected plan is not guru!\n");
   }
 }
 
@@ -347,7 +367,6 @@ void srslte_dft_plan_free(srslte_dft_plan_t *plan) {
   }
   if (plan->p) fftwf_destroy_plan(plan->p);
   pthread_mutex_unlock(&fft_mutex);
-
   bzero(plan, sizeof(srslte_dft_plan_t));
 }
 

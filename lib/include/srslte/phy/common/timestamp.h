@@ -1,12 +1,31 @@
 /**
+* Copyright 2013-2019 
+* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
+*
+* This file is part of the HHI Sidelink.
+*
+* HHI Sidelink is under the terms of the GNU Affero General Public License
+* as published by the Free Software Foundation version 3.
+*
+* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
+* without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*
+* A copy of the GNU Affero General Public License can be found in
+* the LICENSE file in the top-level directory of this distribution
+* and at http://www.gnu.org/licenses/.
+*
+* The HHI Sidelink is based on srsLTE.
+* All necessary files and sources from srsLTE are part of HHI Sidelink.
+* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
+* srsLTE can be found under:
+* https://github.com/srsLTE/srsLTE
+*/
+
+/*
+ * Copyright 2013-2019 Software Radio Systems Limited
  *
- * \section COPYRIGHT
- *
- * Copyright 2013-2015 Software Radio Systems Limited
- *
- * \section LICENSE
- *
- * This file is part of the srsLTE library.
+ * This file is part of srsLTE.
  *
  * srsLTE is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -37,32 +56,42 @@
 #ifndef SRSLTE_TIMESTAMP_H
 #define SRSLTE_TIMESTAMP_H
 
-#include <time.h>
-#include <stdint.h>
 #include "srslte/config.h"
+#include <stdbool.h>
+#include <stdint.h>
+#include <time.h>
 
 typedef struct SRSLTE_API{
   time_t full_secs;
   double frac_secs;
 }srslte_timestamp_t;
 
-SRSLTE_API int srslte_timestamp_init(srslte_timestamp_t *t, 
-                                     time_t full_secs, 
-                                     double frac_secs);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-SRSLTE_API int srslte_timestamp_copy(srslte_timestamp_t *dest, 
-                                     srslte_timestamp_t *src);
+SRSLTE_API int srslte_timestamp_init(srslte_timestamp_t* t, time_t full_secs, double frac_secs);
 
-SRSLTE_API int srslte_timestamp_add(srslte_timestamp_t *t, 
-                                    time_t full_secs, 
-                                    double frac_secs);
+SRSLTE_API void srslte_timestamp_init_uint64(srslte_timestamp_t* ts_time, uint64_t ts_count, double base_srate);
 
-SRSLTE_API int srslte_timestamp_sub(srslte_timestamp_t *t, 
-                                    time_t full_secs, 
-                                    double frac_secs);
+SRSLTE_API int srslte_timestamp_copy(srslte_timestamp_t* dest, srslte_timestamp_t* src);
+
+SRSLTE_API int srslte_timestamp_compare(srslte_timestamp_t* a, srslte_timestamp_t* b);
+
+SRSLTE_API int srslte_timestamp_add(srslte_timestamp_t* t, time_t full_secs, double frac_secs);
+
+SRSLTE_API int srslte_timestamp_sub(srslte_timestamp_t* t, time_t full_secs, double frac_secs);
 
 SRSLTE_API double srslte_timestamp_real(srslte_timestamp_t *t);
 
+SRSLTE_API bool srslte_timestamp_iszero(const srslte_timestamp_t* t);
+
 SRSLTE_API uint32_t srslte_timestamp_uint32(srslte_timestamp_t *t);
+
+SRSLTE_API uint64_t srslte_timestamp_uint64(const srslte_timestamp_t* t, double srate);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // SRSLTE_TIMESTAMP_H
