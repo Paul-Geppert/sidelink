@@ -997,6 +997,8 @@ bool cc_worker::work_sl_tx() {
                                           L_subch * phy->ue_repo.rp.sizeSubchannel_r14 - 2,
                                           ue_sl_tx.pssch_dmrs, ue_sl_tx.sf_symbols);  
 
+      // add awgn to transmit signal
+      srslte_vec_sub_ccc(ue_sl_tx.sf_symbols, phy->noise_buffer, ue_sl_tx.sf_symbols, SRSLTE_SF_LEN_RE(cell.nof_prb, SRSLTE_CP_NORM));
 
       srslte_ofdm_tx_sf(&ue_sl_tx.fft);
 

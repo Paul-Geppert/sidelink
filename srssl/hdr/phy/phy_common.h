@@ -111,6 +111,12 @@ public:
   float         inst_sps_rsrp[1000]; // stores sps_rsrp value, for REST SPS_RSRP purpose.
   float         inst_sps_rssi[1000]; // stores sps_rssi value, for REST SPS_RSSI purpose. 
 
+  uint8_t pssch_fixed_i_mcs;
+  uint32_t pssch_min_tbs;
+
+  cf_t*     noise_buffer;
+  float     tx_snr;
+
   // SCell EARFCN, PCI, configured and enabled list
   typedef struct {
     uint32_t earfcn     = 0;
@@ -203,6 +209,8 @@ public:
   void set_mcch();
   bool is_mbsfn_sf(srslte_mbsfn_cfg_t* cfg, uint32_t tti);
   void set_mch_period_stop(uint32_t stop);
+
+  void set_transmit_snr(float snr);
 
 private:
   bool            have_mtch_stop;

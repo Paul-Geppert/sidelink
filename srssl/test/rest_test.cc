@@ -419,6 +419,59 @@ int main(int argc, char **argv)
     ulfius_clean_request(&request);
     ulfius_clean_response(&response);
 
+    // checking loopback resource pool config
+    printf("Testing put on repo\n");
+    memset(&common.ue_repo.rp, 0x00, sizeof(common.ue_repo.rp));
+
+    ulfius_init_request(&request);
+    ulfius_init_response(&response);
+
+    request.http_url = o_strdup("http://localhost:13000/phy/repo");
+    request.http_verb = o_strdup("PUT");
+
+    struct _u_map req_headers;
+    u_map_init(&req_headers);
+    u_map_put(&req_headers, "Content-Type", "application/json");
+
+    u_map_copy_into(request.map_header, &req_headers);
+
+    request.binary_body = o_strdup("{\"should_not_update\": 69, \"sizeSubchannel_r14\": 5, \"startRB_Subchannel_r14\": 33, \"numSubchannel_r14\": 2}\0");
+    request.binary_body_length = o_strlen((char *)request.binary_body);
+
+    ret = ulfius_send_http_request(&request, &response);
+    if (U_OK != ret) {
+      printf("ulfius_send_http_request failed with %d\n", ret);
+    }
+
+    printf("respones body %p size %ld addr is at %s\n", response.binary_body, response.binary_body_length, request.http_url);
+
+    ((char*)response.binary_body)[response.binary_body_length - 1] = '\0';
+    printf("RESULT: %s\n", (char*)response.binary_body);
+
+    u_map_clean(&req_headers);
+
+    ulfius_clean_request(&request);
+    ulfius_clean_response(&response);
+
+    if( !(common.ue_repo.rp.sizeSubchannel_r14 == 5
+          && common.ue_repo.rp.startRB_Subchannel_r14 == 33
+          && common.ue_repo.rp.numSubchannel_r14 == 2)) {
+      printf("Failed to set new resource pool configuration.\n");
+      return -1;
+    }
+
+    // setup buffer for tranmit noise samples
+    common.noise_buffer = (cf_t*)srslte_vec_malloc(sizeof(cf_t) * SRSLTE_SF_LEN_RE(SRSLTE_MAX_PRB, SRSLTE_CP_NORM));
+    if (!common.noise_buffer) {
+      printf("Error: Allocating memory for noise_buffer\n");
+      return -1;
+    }
+
+    // this keeps the server running for manual testing
+    usleep(ttl*1e6);
+
+    free(common.noise_buffer);
+
     srsue::g_restapi.stop();
   }
 
