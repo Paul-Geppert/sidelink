@@ -751,6 +751,12 @@ bool cc_worker::work_sl_rx()
       float snr = 10*log10(ue_sl.chest.pilot_power / ue_sl.chest.noise_estimate);
       float rsrp = 10*log10(ue_sl.chest.pilot_power) + 30;
 
+      // following values are dumped into PCAP
+      dl_mac_grant.sl_lte_tti = tti;
+      dl_mac_grant.sl_snr = snr;
+      dl_mac_grant.sl_rsrp = rsrp;
+      dl_mac_grant.sl_rssi = phy->inst_sps_rssi[(sps_rssi_read_cnt+999) % 1000];
+
       int ue_id = srslte_repo_get_t_SL_k(&phy->ue_repo, tti % 10240);
 
       if(ue_id < 0) {

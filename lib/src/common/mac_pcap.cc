@@ -101,6 +101,37 @@ void mac_pcap::pack_and_write(uint8_t* pdu, uint32_t pdu_len_bytes, uint32_t reT
   }
 }
 
+
+void mac_pcap::pack_and_write(uint8_t* pdu, uint32_t pdu_len_bytes, uint32_t reTX, bool crc_ok, uint32_t tti, 
+                              uint16_t crnti, uint8_t direction, uint8_t rnti_type,
+                              float snr, float rsrp, float rssi)
+{
+  if (enable_write) {
+    MAC_Context_Info_t  context =
+    {
+        FDD_RADIO, direction, rnti_type,
+        crnti,       /* RNTI */
+        (uint16_t)ue_id,      /* UEId */
+        (uint8_t)reTX,        /* Retx */
+        crc_ok,        /* CRC Stsatus (i.e. OK) */
+        (uint16_t)(tti/10),        /* Sysframe number */
+        (uint16_t)(tti%10)        /* Subframe number */
+    };
+    context.sl_snr = snr;
+    context.sl_rsrp = rsrp;
+    context.sl_rssi = rssi;
+    
+    if (pdu) {
+      LTE_PCAP_MAC_WritePDU(pcap_file, &context, pdu, pdu_len_bytes);
+    }
+  }
+}
+
+
+void mac_pcap::write_dl_crnti(uint8_t* pdu, uint32_t pdu_len_bytes, uint16_t rnti, bool crc_ok, uint32_t tti, float snr, float rsrp, float rssi)
+{
+  pack_and_write(pdu, pdu_len_bytes, 0, crc_ok, tti, rnti, DIRECTION_DOWNLINK, C_RNTI, snr, rsrp, rssi);
+}
 void mac_pcap::write_dl_crnti(uint8_t* pdu, uint32_t pdu_len_bytes, uint16_t rnti, bool crc_ok, uint32_t tti)
 {
   pack_and_write(pdu, pdu_len_bytes, 0, crc_ok, tti, rnti, DIRECTION_DOWNLINK, C_RNTI);
