@@ -1,28 +1,4 @@
 /**
-* Copyright 2013-2019 
-* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
-*
-* This file is part of the HHI Sidelink.
-*
-* HHI Sidelink is under the terms of the GNU Affero General Public License
-* as published by the Free Software Foundation version 3.
-*
-* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
-* without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-*
-* A copy of the GNU Affero General Public License can be found in
-* the LICENSE file in the top-level directory of this distribution
-* and at http://www.gnu.org/licenses/.
-*
-* The HHI Sidelink is based on srsLTE.
-* All necessary files and sources from srsLTE are part of HHI Sidelink.
-* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
-* srsLTE can be found under:
-* https://github.com/srsLTE/srsLTE
-*/
-
-/**
  *
  * \section COPYRIGHT
  *
@@ -422,6 +398,7 @@ int main(int argc, char **argv)
     ulfius_clean_request(&request);
     ulfius_clean_response(&response);
 
+
     // checking loopback resource pool config
     printf("Testing put on repo\n");
     memset(&common.ue_repo.rp, 0x00, sizeof(common.ue_repo.rp));
@@ -474,53 +451,6 @@ int main(int argc, char **argv)
     usleep(ttl*1e6);
 
     free(common.noise_buffer);
-
-    srsue::g_restapi.stop();
-  }
-
-    // checking loopback resource pool config
-    printf("Testing put on repo\n");
-    memset(&common.ue_repo.rp, 0x00, sizeof(common.ue_repo.rp));
-
-    ulfius_init_request(&request);
-    ulfius_init_response(&response);
-
-    request.http_url = o_strdup("http://localhost:13000/phy/repo");
-    request.http_verb = o_strdup("PUT");
-
-    struct _u_map req_headers;
-    u_map_init(&req_headers);
-    u_map_put(&req_headers, "Content-Type", "application/json");
-
-    u_map_copy_into(request.map_header, &req_headers);
-
-    request.binary_body = o_strdup("{\"should_not_update\": 69, \"sizeSubchannel_r14\": 5, \"startRB_Subchannel_r14\": 33, \"numSubchannel_r14\": 2}\0");
-    request.binary_body_length = o_strlen((char *)request.binary_body);
-
-    ret = ulfius_send_http_request(&request, &response);
-    if (U_OK != ret) {
-      printf("ulfius_send_http_request failed with %d\n", ret);
-    }
-
-    printf("respones body %p size %ld addr is at %s\n", response.binary_body, response.binary_body_length, request.http_url);
-
-    ((char*)response.binary_body)[response.binary_body_length - 1] = '\0';
-    printf("RESULT: %s\n", (char*)response.binary_body);
-
-    u_map_clean(&req_headers);
-
-    ulfius_clean_request(&request);
-    ulfius_clean_response(&response);
-
-    if( !(common.ue_repo.rp.sizeSubchannel_r14 == 5
-          && common.ue_repo.rp.startRB_Subchannel_r14 == 33
-          && common.ue_repo.rp.numSubchannel_r14 == 2)) {
-      printf("Failed to set new resource pool configuration.\n");
-      return -1;
-    }
-
-    // this keeps the server running for manual testing
-    usleep(ttl*1e6);
 
     srsue::g_restapi.stop();
   }
