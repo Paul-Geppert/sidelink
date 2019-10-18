@@ -68,9 +68,14 @@ rest g_restapi;
 static int rest_get_metrics (const struct _u_request * request, struct _u_response * response, void * user_data) {
   phy_common * _this = (phy_common *)user_data;
 
-  json_t * json_body = json_pack("{sfsfsfsfsfsfsf}",
+  json_t * json_body = json_pack("{sfsfsfsfsfsfsfsfsfsfsfsf}",
                                   "snr_psbch", _this->snr_psbch,
                                   "rsrp_psbch", _this->rsrp_psbch,
+                                  "rsrp_ue_0", _this->rsrp_pssch_per_ue[0],
+                                  "rsrp_ue_1", _this->rsrp_pssch_per_ue[1],
+                                  "rsrp_ue_2", _this->rsrp_pssch_per_ue[2],
+                                  "rsrp_ue_3", _this->rsrp_pssch_per_ue[3],
+                                  "rsrp_ue_4", _this->rsrp_pssch_per_ue[4],
                                   "snr_ue_0", _this->snr_pssch_per_ue[0],
                                   "snr_ue_1", _this->snr_pssch_per_ue[1],
                                   "snr_ue_2", _this->snr_pssch_per_ue[2],
@@ -78,7 +83,7 @@ static int rest_get_metrics (const struct _u_request * request, struct _u_respon
                                   "snr_ue_4", _this->snr_pssch_per_ue[4]);
                                   
 
-  char *resp = json_dumps(json_body, JSON_REAL_PRECISION(2));
+  char *resp = json_dumps(json_body, JSON_REAL_PRECISION(3));
   ulfius_set_string_body_response(response, 200, resp);
 
   free(resp);
@@ -91,14 +96,15 @@ static int rest_get_metrics (const struct _u_request * request, struct _u_respon
 static int rest_get_repo_cb (const struct _u_request * request, struct _u_response * response, void * user_data) {
   phy_common * _this = (phy_common *)user_data;
 
-  json_t * json_body = json_pack("{sisisisisisisi}",
+  json_t * json_body = json_pack("{sisisisisisisisi}",
                                   "numSubchannel_r14",      _this->ue_repo.rp.numSubchannel_r14,
                                   "sizeSubchannel_r14",     _this->ue_repo.rp.sizeSubchannel_r14,
                                   "sl_OffsetIndicator_r14", _this->ue_repo.rp.sl_OffsetIndicator_r14,
                                   "sl_Subframe_r14_len",    _this->ue_repo.rp.sl_Subframe_r14_len,
                                   "startRB_PSCCH_Pool_r14", _this->ue_repo.rp.startRB_PSCCH_Pool_r14,
                                   "startRB_Subchannel_r14", _this->ue_repo.rp.startRB_Subchannel_r14,
-                                  "sizeSubchannel_r14",     _this->ue_repo.rp.sizeSubchannel_r14);
+                                  "pssch_fixed_i_mcs",      _this->pssch_fixed_i_mcs,
+                                  "pssch_min_tbs",          _this->pssch_min_tbs);
                                   
   ulfius_set_json_body_response(response, 200, json_body);
   json_decref(json_body);
@@ -121,19 +127,48 @@ static int rest_put_repo_cb (const struct _u_request * request, struct _u_respon
 
   char *jd = json_dumps(req, 0);
   printf("Received JSON: %s\n", jd);
+  free(jd);
 
   SL_CommResourcePoolV2X_r14 new_repo;
   memcpy(&new_repo, &_this->ue_repo.rp, sizeof(SL_CommResourcePoolV2X_r14));
 
-  // parse received repo
-  json_unpack(req, "{s?i,s?i,s?i,s?i,s?i,s?i,s?i}",
-              "numSubchannel_r14",      &new_repo.numSubchannel_r14,
-              "sizeSubchannel_r14",     &new_repo.sizeSubchannel_r14,
-              "sl_OffsetIndicator_r14", &new_repo.sl_OffsetIndicator_r14,
-              "sl_Subframe_r14_len",    &new_repo.sl_Subframe_r14_len,
-              "startRB_PSCCH_Pool_r14", &new_repo.startRB_PSCCH_Pool_r14,
-              "startRB_Subchannel_r14", &new_repo.startRB_Subchannel_r14,
-              "sizeSubchannel_r14",     &new_repo.sizeSubchannel_r14);
+  // check each possible entry of the json
+  // we do it this way, because the json_integer is larger than our uint8_t
+  json_t *value;
+
+  if((value = json_object_get(req,"numSubchannel_r14"))) {
+    new_repo.numSubchannel_r14 = (uint8_t)json_integer_value(value);
+  }
+
+  if((value = json_object_get(req,"sizeSubchannel_r14"))) {
+    new_repo.sizeSubchannel_r14 = (uint8_t)json_integer_value(value);
+  }
+
+  if((value = json_object_get(req,"sl_OffsetIndicator_r14"))) {
+    new_repo.sl_OffsetIndicator_r14 = (uint8_t)json_integer_value(value);
+  }
+
+  if((value = json_object_get(req,"sl_Subframe_r14_len"))) {
+    new_repo.sl_Subframe_r14_len = (uint8_t)json_integer_value(value);
+  }
+
+  if((value = json_object_get(req,"startRB_PSCCH_Pool_r14"))) {
+    new_repo.startRB_PSCCH_Pool_r14 = (uint8_t)json_integer_value(value);
+  }
+
+  if((value = json_object_get(req,"startRB_Subchannel_r14"))) {
+    new_repo.startRB_Subchannel_r14 = (uint8_t)json_integer_value(value);
+  }
+
+  if((value = json_object_get(req, "pssch_fixed_i_mcs"))) {
+    if(json_integer_value(value) <= 28) {
+      _this->pssch_fixed_i_mcs = (uint8_t)json_integer_value(value);
+    }
+  }
+
+  if((value = json_object_get(req, "pssch_min_tbs"))) {
+    _this->pssch_min_tbs = (uint32_t)json_integer_value(value);
+  }
 
   json_decref(req);
 
@@ -146,7 +181,6 @@ static int rest_put_repo_cb (const struct _u_request * request, struct _u_respon
   }
 
   // send current setting to user
-
   return rest_get_repo_cb(request, response, user_data);
 }
 
@@ -242,7 +276,10 @@ static int rest_get_SPS_rssi(const struct _u_request* request, struct _u_respons
     json_array_append_new(arr_sps_rssi, json_real(_this->inst_sps_rssi[i]));
   }
 
-  char *resp = json_dumps(arr_sps_rssi, JSON_REAL_PRECISION(2));
+  // this allows for cross origin access for a possible browser config interface
+  ulfius_add_header_to_response(response, "Access-Control-Allow-Origin", "*");
+
+  char *resp = json_dumps(arr_sps_rssi, JSON_REAL_PRECISION(3));
   ulfius_set_string_body_response(response, 200, resp);
 
   free(resp);

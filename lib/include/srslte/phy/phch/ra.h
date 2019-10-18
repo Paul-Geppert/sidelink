@@ -113,7 +113,7 @@ typedef struct SRSLTE_API {
 // todo: (rl) this struct is now found under srslte_ra_tb_t
 typedef struct SRSLTE_API {
   srslte_mod_t mod;
-  int tbs;
+  uint32_t tbs;
   uint32_t idx; 
 } srslte_ra_mcs_t;
 

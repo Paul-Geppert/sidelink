@@ -226,6 +226,24 @@ uint8_t* mux::sl_pdu_get(srslte::byte_buffer_t* payload, uint32_t pdu_sz)
     }
   }
 
+  // check for data in lcid 3
+  lcid = 3;
+  sdu_space = sl_pdu_msg.get_sdu_space();
+
+  if (sl_pdu_msg.new_subh()) { // there is space for a new subheader
+    //int sdu_len = sl_pdu_msg.get()->set_sdu(lcid, b, buffer);
+    int sdu_len = sl_pdu_msg.get()->set_sdu(lcid, sdu_space/*sdu_len*/, rlc);
+
+    if (sdu_len > 0) { // new SDU could be added
+      printf("SDU:   allocated lcid=%d, rlc_buffer=%d, allocated=%d/%d, max_sdu_sz=%d, remaining=%d\n",
+              lcid, buffer_state, sdu_len, sdu_space, -1/*max_sdu_sz*/, sl_pdu_msg.rem_size());
+    } else {
+      // printf("SDU:   rlc_buffer=%d, allocated=%d/%d, remaining=%d\n", 
+      //       buffer_state, sdu_len, sdu_space, sl_pdu_msg.rem_size());
+      sl_pdu_msg.del_subh();
+    }
+  }
+
   /* Generate MAC PDU and save to buffer */
   ret = sl_pdu_msg.write_packet(log_h);
 
