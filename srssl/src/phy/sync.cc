@@ -377,6 +377,10 @@ bool sync::cell_create(phy_interface_rrc_lte::phy_cell_t *new_cell) {
   // Move state to IDLE
   phy_state.go_idle();
 
+  // we had some issues with the usrp reporting errors
+  // and adding the sleep may have fixed this
+  usleep(200000);
+
   set_frequency();
 
   /* Reconfigure cell if necessary */
@@ -402,9 +406,6 @@ bool sync::cell_create(phy_interface_rrc_lte::phy_cell_t *new_cell) {
 
   phy_state.force_serving();
 
-  // we had some issues with the usrp reporting errors
-  // and adding the sleep may have fixed this
-  usleep(2000);
 
   printf("Go serving in state: %s\n", phy_state.to_string());
   Info("Go serving in state: %s\n", phy_state.to_string());

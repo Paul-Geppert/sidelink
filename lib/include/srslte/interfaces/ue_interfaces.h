@@ -401,8 +401,12 @@ public:
     bool     is_sps_release;
 
     // sidelink extension, eventually we should reflect this in a new typedef
+    uint32_t sl_lte_tti; // this is lte tti
     uint32_t sl_tti; // sidelink subframe id
     uint8_t  sl_gap; // sidelink sf_gap
+    float    sl_snr;
+    float    sl_rssi;
+    float    sl_rsrp;
   } mac_grant_dl_t;
 
   typedef struct {

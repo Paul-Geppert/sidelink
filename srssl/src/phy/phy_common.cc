@@ -105,6 +105,9 @@ phy_common::phy_common(uint32_t max_workers) : tx_sem(max_workers)
   pssch_fixed_i_mcs = 8;
   pssch_min_tbs = 800;
 
+  // set initial snr value for transmit samples
+  tx_snr = 60.0;
+
   rar_grant_tti = -1;
 
   bzero(zeros, 50000 * sizeof(cf_t));
@@ -165,10 +168,32 @@ void phy_common::init(phy_args_t*                  _args,
         srslte::channel_ptr(new srslte::channel(args->ul_channel_args, args->nof_rf_channels * args->nof_rx_ant));
   }
 
+  // allocate buffer for noise samples
+  noise_buffer = (cf_t*)srslte_vec_malloc(sizeof(cf_t) * SRSLTE_SF_LEN_RE(SRSLTE_MAX_PRB, SRSLTE_CP_NORM));
+  if (!noise_buffer) {
+    Error("Allocating memory\n");
+    return;
+  }
+
+  // populate buffer with values
+  set_transmit_snr(tx_snr);
+
   #ifdef ENABLE_REST
   // attach rest api and start it
   g_restapi.init_and_start(this);
   #endif
+}
+
+
+void phy_common::set_transmit_snr(float snr) {
+
+  tx_snr = snr;
+
+  // initialize with values
+  float scaling = 1.0;
+  float std_dev = powf(10, - (tx_snr + 3.0f) / 20.0f) * scaling;
+
+  srslte_ch_awgn_c(zeros, noise_buffer, std_dev, SRSLTE_SF_LEN_RE(SRSLTE_MAX_PRB, SRSLTE_CP_NORM));
 }
 
 void phy_common::set_ue_dl_cfg(srslte_ue_dl_cfg_t* ue_dl_cfg)

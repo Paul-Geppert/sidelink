@@ -1,28 +1,4 @@
 /**
-* Copyright 2013-2019 
-* Fraunhofer Institute for Telecommunications, Heinrich-Hertz-Institut (HHI)
-*
-* This file is part of the HHI Sidelink.
-*
-* HHI Sidelink is under the terms of the GNU Affero General Public License
-* as published by the Free Software Foundation version 3.
-*
-* HHI Sidelink is distributed WITHOUT ANY WARRANTY,
-* without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-*
-* A copy of the GNU Affero General Public License can be found in
-* the LICENSE file in the top-level directory of this distribution
-* and at http://www.gnu.org/licenses/.
-*
-* The HHI Sidelink is based on srsLTE.
-* All necessary files and sources from srsLTE are part of HHI Sidelink.
-* srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
-* srsLTE can be found under:
-* https://github.com/srsLTE/srsLTE
-*/
-
-/**
  *
  * \section COPYRIGHT
  *
@@ -464,8 +440,17 @@ int main(int argc, char **argv)
       return -1;
     }
 
+    // setup buffer for tranmit noise samples
+    common.noise_buffer = (cf_t*)srslte_vec_malloc(sizeof(cf_t) * SRSLTE_SF_LEN_RE(SRSLTE_MAX_PRB, SRSLTE_CP_NORM));
+    if (!common.noise_buffer) {
+      printf("Error: Allocating memory for noise_buffer\n");
+      return -1;
+    }
+
     // this keeps the server running for manual testing
     usleep(ttl*1e6);
+
+    free(common.noise_buffer);
 
     srsue::g_restapi.stop();
   }

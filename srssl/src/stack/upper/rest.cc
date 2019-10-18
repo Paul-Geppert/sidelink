@@ -289,6 +289,52 @@ static int rest_get_SPS_rssi(const struct _u_request* request, struct _u_respons
 }
 
 
+
+static int rest_get_misc (const struct _u_request * request, struct _u_response * response, void * user_data) {
+
+  phy_common * _this = (phy_common *)user_data;
+
+  json_t * json_body = json_pack("{sf}",
+                                  "transmit_snr", _this->tx_snr);
+                                  
+  ulfius_set_json_body_response(response, 200, json_body);
+  json_decref(json_body);
+
+  return U_CALLBACK_CONTINUE;
+}  
+
+
+static int rest_put_misc (const struct _u_request * request, struct _u_response * response, void * user_data) {
+
+  phy_common * _this = (phy_common *)user_data;
+  const int GAIN_NO_CHANGE = -99;
+
+  json_error_t json_error;
+  json_t * req = ulfius_get_json_body_request(request, &json_error);
+
+  if(NULL == req) {
+    ulfius_set_string_body_response(response, 400, json_error.text);
+    return U_CALLBACK_CONTINUE;
+  }
+
+  char *jd = json_dumps(req, 0);
+  printf("Received JSON: %s\n", jd);
+
+  json_t *value;
+  if((value = json_object_get(req, "transmit_snr"))) {
+    float new_snr = (float)json_number_value(value);
+
+    _this->set_transmit_snr(new_snr);
+  }
+
+  json_decref(req);
+
+  // send current setting to user
+  return rest_get_misc(request, response, user_data);
+}
+
+
+
 /**
  * Default callback function called if no endpoint has a match
  */
@@ -338,6 +384,9 @@ void rest::init_and_start(phy_common * this_){
   ret += ulfius_add_endpoint_by_val(&g_restapi.instance, "GET", "/phy/SPS_rsrp", NULL, 0, &srsue::rest_get_SPS_rsrp, this_);
   ret += ulfius_add_endpoint_by_val(&g_restapi.instance, "GET", "/phy/SPS_rssi", NULL, 0, &srsue::rest_get_SPS_rssi, this_);
   
+  ret += ulfius_add_endpoint_by_val(&g_restapi.instance, "GET", "/phy/misc", NULL, 0, &srsue::rest_get_misc, this_);
+  ret += ulfius_add_endpoint_by_val(&g_restapi.instance, "PUT", "/phy/misc", NULL, 0, &srsue::rest_put_misc, this_);
+
   if(U_OK != ret) {
     printf("Error: failed to add endpoints for rest api\n");
   }
