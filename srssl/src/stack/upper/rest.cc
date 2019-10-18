@@ -320,7 +320,7 @@ void rest::init(unsigned int port){
 
 void rest::init_and_start(phy_common * this_){
 
-  uint32_t port = 13000 + this_->args->sidelink_id;
+  uint32_t port = 13000; // + this_->args->sidelink_id;
 
   rest::init(port);
 
