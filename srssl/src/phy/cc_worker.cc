@@ -726,6 +726,9 @@ bool cc_worker::work_sl_rx()
 
   bool dl_grant_available = decode_pscch_dl(&dl_mac_grant); 
 
+  last_decoding_successful = false;
+  last_decoding_successful_high_rsrp = false;
+
 #if 1
   // do not decode our own sent messages
   if(dl_grant_available && ((srslte_repo_get_t_SL_k(&phy->ue_repo, tti) % 5) == phy->args->sidelink_id)) {
@@ -739,6 +742,9 @@ bool cc_worker::work_sl_rx()
 
     /* Decode PSSCH if instructed to do so */
     if (dl_action.tb[0].enabled) {
+
+      // indicate, that we can dump this subframe
+      last_decoding_successful = true;
       
       // make space for snr insertion
       dl_action.tb[0].payload += sizeof(float);
@@ -750,6 +756,10 @@ bool cc_worker::work_sl_rx()
       // calculate snr for possibly decoded pssch
       float snr = 10*log10(ue_sl.chest.pilot_power / ue_sl.chest.noise_estimate);
       float rsrp = 10*log10(ue_sl.chest.pilot_power) + 30;
+
+      if(rsrp > 50.0) {
+        last_decoding_successful_high_rsrp = true;
+      }
 
       // following values are dumped into PCAP
       dl_mac_grant.sl_lte_tti = tti;
@@ -818,7 +828,41 @@ bool cc_worker::work_sl_rx()
   return true;
 }
 
+bool cc_worker::dump_subframe() {
 
+  if(phy->n_subframes_to_dump>0 && last_decoding_successful) {
+    struct timeval t;
+    gettimeofday(&t, NULL);
+
+    char filename [30];
+
+    snprintf(filename, sizeof(filename), "iq_dump_%d.%ld.bin", t.tv_sec, t.tv_usec);
+
+    srslte_filesink_t fsink;
+    srslte_filesink_init(&fsink, filename, SRSLTE_COMPLEX_FLOAT_BIN);
+    srslte_filesink_write(&fsink, (void*) get_rx_buffer(0), SRSLTE_SF_LEN_PRB(cell.nof_prb));
+    srslte_filesink_free(&fsink);
+
+    phy->n_subframes_to_dump--;
+  }
+
+  if(last_decoding_successful_high_rsrp && phy->n_subframes_to_dump_special>0) {
+    struct timeval t;
+    gettimeofday(&t, NULL);
+
+    char filename [30];
+
+    snprintf(filename, sizeof(filename), "iq_hr_dump_%d.%ld.bin", t.tv_sec, t.tv_usec);
+
+    srslte_filesink_t fsink;
+    srslte_filesink_init(&fsink, filename, SRSLTE_COMPLEX_FLOAT_BIN);
+    srslte_filesink_write(&fsink, (void*) get_rx_buffer(0), SRSLTE_SF_LEN_PRB(cell.nof_prb));
+    srslte_filesink_free(&fsink);
+
+    phy->n_subframes_to_dump_special--;
+  }
+  
+}
 
 
 bool cc_worker::work_sl_tx() {

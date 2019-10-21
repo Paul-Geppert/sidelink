@@ -332,6 +332,8 @@ void sf_worker::work_imp()
     update_measurements();
   }
 
+  cc_workers[0]->dump_subframe();
+
   pthread_mutex_unlock(&mutex);
 
   // Call feedback loop for chest

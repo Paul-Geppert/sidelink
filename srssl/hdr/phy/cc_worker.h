@@ -85,6 +85,7 @@ public:
   int read_pdsch_d(cf_t* pdsch_d);
 
   void update_measurements();
+  bool dump_subframe();
 
 private:
   void dl_phy_to_mac_grant(srslte_pdsch_grant_t*                  phy_grant,
@@ -174,6 +175,8 @@ private:
   /* SL */
   static uint32_t sps_rsrp_read_cnt;
   static uint32_t sps_rssi_read_cnt;
+  bool last_decoding_successful;
+  bool last_decoding_successful_high_rsrp;
 
   // Metrics
   dl_metrics_t dl_metrics;

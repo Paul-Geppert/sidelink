@@ -117,6 +117,8 @@ public:
 
   cf_t*     noise_buffer;
   float     tx_snr;
+  int8_t    n_subframes_to_dump;
+  int8_t    n_subframes_to_dump_special;
 
   // SCell EARFCN, PCI, configured and enabled list
   typedef struct {

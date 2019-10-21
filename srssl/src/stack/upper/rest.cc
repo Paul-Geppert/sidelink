@@ -294,8 +294,10 @@ static int rest_get_misc (const struct _u_request * request, struct _u_response 
 
   phy_common * _this = (phy_common *)user_data;
 
-  json_t * json_body = json_pack("{sf}",
-                                  "transmit_snr", _this->tx_snr);
+  json_t * json_body = json_pack("{sfsisi}",
+                                  "transmit_snr", _this->tx_snr,
+                                  "n_subframes_to_dump", _this->n_subframes_to_dump,
+                                  "n_subframes_to_dump_special", _this->n_subframes_to_dump_special);
                                   
   ulfius_set_json_body_response(response, 200, json_body);
   json_decref(json_body);
@@ -327,6 +329,13 @@ static int rest_put_misc (const struct _u_request * request, struct _u_response 
     _this->set_transmit_snr(new_snr);
   }
 
+  if((value = json_object_get(req, "n_subframes_to_dump"))) {
+    _this->n_subframes_to_dump = (uint8_t)json_integer_value(value);
+  }
+
+  if((value = json_object_get(req, "n_subframes_to_dump_special"))) {
+    _this->n_subframes_to_dump_special = (uint8_t)json_integer_value(value);
+  }
   json_decref(req);
 
   // send current setting to user
