@@ -691,7 +691,7 @@ bool cc_worker::work_sl_rx()
     phy->snr_psbch = SRSLTE_VEC_EMA(snr, phy->snr_psbch, 0.1);
     phy->rsrp_psbch = SRSLTE_VEC_EMA(rsrp, phy->rsrp_psbch, 0.1);
 
-    if(phy->rsrp_psbch > 30.0) {
+    if(phy->rsrp_psbch > 40.0) {
       printf("We have high RSRP values(%f) in PSBCH, maybe reduce receiver gain.\n", phy->rsrp_psbch);
     }
 
