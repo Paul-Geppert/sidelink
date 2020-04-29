@@ -167,6 +167,7 @@ void srslte_softbuffer_rx_reset_cb(srslte_softbuffer_rx_t *q, uint32_t nof_cb) {
   if (q->cb_crc) {
     bzero(q->cb_crc, sizeof(bool) * q->max_cb);
   }
+  q->tb_crc = false;
 }
 
 

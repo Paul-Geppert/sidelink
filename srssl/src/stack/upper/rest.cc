@@ -68,7 +68,8 @@ rest g_restapi;
 static int rest_get_metrics (const struct _u_request * request, struct _u_response * response, void * user_data) {
   phy_common * _this = (phy_common *)user_data;
 
-  json_t * json_body = json_pack("{sfsfsfsfsfsfsfsfsfsfsfsf}",
+  json_t * json_body = json_pack("{sfsfsfsfsfsfsfsfsfsfsfsfsf}",
+                                  "rssi_db", _this->sl_rssi,
                                   "snr_psbch", _this->snr_psbch,
                                   "rsrp_psbch", _this->rsrp_psbch,
                                   "rsrp_ue_0", _this->rsrp_pssch_per_ue[0],
@@ -245,16 +246,41 @@ static int rest_put_gain (const struct _u_request * request, struct _u_response 
   return rest_get_gain(request, response, user_data);
 }
 
+static json_t* rest_float_to_json(float v)
+{
+#if 1
+  if (v==-INFINITY) return json_string("-INFINITY");
+  else if (v==INFINITY) return json_string("INFINITY");
+  else if (v==NAN) return json_string("NAN");
+  else return json_real(v);
+#else
+  // Use this if you want infinity/nan to return as JSON_NULL
+  // which will not get appended to arrays etc.
+  return json_real(v);
+#endif
+}
+
 static int rest_get_SPS_rsrp(const struct _u_request* request, struct _u_response* response, void* user_data)
 {
   phy_common* _this = (phy_common*)user_data;
 
   json_t* arr_sps_rsrp = json_array();
-  int s = sizeof(_this->inst_sps_rsrp)/sizeof(_this->inst_sps_rsrp[0]);
-  
-  for (int i = 0; (i <= s) && (_this->inst_sps_rsrp[i] != 0); i++)
-  {
-    json_array_append_new(arr_sps_rsrp, json_real(_this->inst_sps_rsrp[i]));
+
+  int s = 1000; // number of samples to get
+  int latestTti = _this->sensing_sps->getLatestTti();
+  int tti;
+
+  // Get last s samples relative to the latest TTI
+  // It is possible that the data is overwritten as we fetch them
+  if (latestTti>=s) {
+    tti = latestTti-s;
+  } else {
+    tti = 10240 + latestTti - s;
+  }
+
+  for (int i = 0; i < s; i++,tti++) {
+    //json_array_append_new(arr_sps_rsrp, json_real(_this->sensing_sps->getAverageSRSRP(tti)));
+    json_array_append_new(arr_sps_rsrp, rest_float_to_json(_this->sensing_sps->getAverageSRSRP(tti)));
   }
   
   ulfius_set_json_body_response(response, 200, arr_sps_rsrp);
@@ -269,20 +295,31 @@ static int rest_get_SPS_rssi(const struct _u_request* request, struct _u_respons
   phy_common* _this = (phy_common*)user_data;
 
   json_t* arr_sps_rssi = json_array();
-  int s = sizeof(_this->inst_sps_rssi)/sizeof(_this->inst_sps_rssi[0]);
-  
-  for (int i = 0; i < s; i++)
-  {
-    json_array_append_new(arr_sps_rssi, json_real(_this->inst_sps_rssi[i]));
+
+  int s = 1000; // number of samples to get
+  int latestTti = _this->sensing_sps->getLatestTti();
+  int tti;
+
+  // Get last s samples relative to the latest TTI
+  // It is possible that the data is overwritten as we fetch them
+  if (latestTti>=s) {
+    tti = latestTti-s;
+  } else {
+    tti = 10240 + latestTti - s;
   }
 
-  // this allows for cross origin access for a possible browser config interface
-  ulfius_add_header_to_response(response, "Access-Control-Allow-Origin", "*");
+  for (int i = 0; i < s; i++,tti++) {
+    json_array_append_new(arr_sps_rssi, rest_float_to_json(_this->sensing_sps->getAverageSRSSI(tti)));
+  }
 
-  char *resp = json_dumps(arr_sps_rssi, JSON_REAL_PRECISION(3));
-  ulfius_set_string_body_response(response, 200, resp);
+  if (1) {
+    ulfius_set_json_body_response(response, 200, arr_sps_rssi);
+  } else {
+    char* resp = json_dumps(arr_sps_rssi, JSON_REAL_PRECISION(2));
+    ulfius_set_string_body_response(response, 200, resp);
+    free(resp);
+  }
 
-  free(resp);
   json_decref(arr_sps_rssi);
 
   return U_CALLBACK_CONTINUE;
@@ -375,7 +412,7 @@ void rest::init(unsigned int port){
 
 void rest::init_and_start(phy_common * this_){
 
-  uint32_t port = 13000; // + this_->args->sidelink_id;
+  uint32_t port = 13000 + this_->args->sidelink_id;
 
   rest::init(port);
 

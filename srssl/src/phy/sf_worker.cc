@@ -170,6 +170,11 @@ void sf_worker::set_tti(uint32_t tti, uint32_t tx_worker_cnt)
   }
 }
 
+float sf_worker::get_last_agc()
+{
+  return cc_workers[0]->get_last_agc();
+}
+
 void sf_worker::set_tx_time(uint32_t radio_idx, srslte_timestamp_t tx_time, int next_offset)
 {
   this->next_offset[radio_idx] = next_offset;
@@ -297,7 +302,7 @@ void sf_worker::work_imp()
 #endif
 
   // only do for first carrier
-  for (int carrier_idx = 0; carrier_idx < phy->args->nof_carriers && carrier_idx < 1; carrier_idx++) {
+  for (unsigned int carrier_idx = 0; carrier_idx < phy->args->nof_carriers && carrier_idx < 1; carrier_idx++) {
     tx_signal_ready = cc_workers[0]->work_sl_tx();
 
     // Get carrier mapping
@@ -443,9 +448,19 @@ void sf_worker::start_plot()
 #endif
 }
 
+int sf_worker::read_pssch_d(cf_t* pssch_d)
+{
+  return cc_workers[0]->read_pssch_d(pssch_d);
+}
+
 int sf_worker::read_ce_abs(float* ce_abs, uint32_t tx_antenna, uint32_t rx_antenna)
 {
   return cc_workers[0]->read_ce_abs(ce_abs, tx_antenna, rx_antenna);
+}
+
+cf_t* sf_worker::read_td_samples(uint32_t* n_samples)
+{
+  return cc_workers[0]->read_td_samples(n_samples);
 }
 
 int sf_worker::read_pdsch_d(cf_t* pdsch_d)
@@ -476,6 +491,7 @@ float sf_worker::get_cfo()
 #ifdef ENABLE_GUI
 plot_real_t    pce[SRSLTE_MAX_PORTS][SRSLTE_MAX_PORTS];
 plot_scatter_t pconst;
+plot_real_t    plot_td;
 #define SCATTER_PDSCH_BUFFER_LEN (20 * 6 * SRSLTE_SF_LEN_RE(SRSLTE_MAX_PRB, SRSLTE_CP_NORM))
 #define SCATTER_PDSCH_PLOT_LEN 4000
 float tmp_plot[SCATTER_PDSCH_BUFFER_LEN];
@@ -500,6 +516,8 @@ void* plot_thread_run(void* arg)
   srsue::sf_worker* worker = (srsue::sf_worker*)arg;
   uint32_t          row_count = 0;
 
+  pthread_setname_np(pthread_self(), "gui_thread");
+
   sdrgui_init();
   for (uint32_t tx = 0; tx < worker->get_cell_nof_ports(); tx++) {
     for (uint32_t rx = 0; rx < worker->get_rx_nof_antennas(); rx++) {
@@ -510,17 +528,25 @@ void* plot_thread_run(void* arg)
       plot_real_setLabels(&pce[tx][rx], (char*)"Index", (char*)"dB");
       plot_real_setYAxisScale(&pce[tx][rx], -40, 40);
 
-      plot_real_addToWindowGrid(&pce[tx][rx], (char*)"srsue", tx, rx);
+      plot_real_addToWindowGrid(&pce[tx][rx], (char*)"srssl", tx, rx);
     }
   }
   row_count = worker->get_rx_nof_antennas();
 
   plot_scatter_init(&pconst);
-  plot_scatter_setTitle(&pconst, (char*)"PDSCH - Equalized Symbols");
+  plot_scatter_setTitle(&pconst, (char*)"PSSCH - Equalized Symbols");
   plot_scatter_setXAxisScale(&pconst, -4, 4);
   plot_scatter_setYAxisScale(&pconst, -4, 4);
 
-  plot_scatter_addToWindowGrid(&pconst, (char*)"srsue", 0, row_count);
+  plot_scatter_addToWindowGrid(&pconst, (char*)"srssl", 0, row_count);
+
+  // time domain plot
+  plot_real_init(&plot_td);
+  plot_real_setTitle(&plot_td, (char*)"Time domain");
+  plot_real_setLabels(&plot_td, (char*)"Time", (char*)"Amplitude");
+  plot_real_setYAxisScale(&plot_td, -1.0, 1.0);
+
+  plot_scatter_addToWindowGrid(&plot_td, (char*)"srssl", 0, row_count+1);
 
 #if CFO_PLOT_LEN > 0
   plot_real_init(&pcfo);
@@ -528,7 +554,7 @@ void* plot_thread_run(void* arg)
   plot_real_setLabels(&pcfo, (char*)"Time", (char*)"Hz");
   plot_real_setYAxisScale(&pcfo, -4000, 4000);
 
-  plot_scatter_addToWindowGrid(&pcfo, (char*)"srsue", 1, row_count++);
+  plot_scatter_addToWindowGrid(&pcfo, (char*)"srssl", 1, row_count++);
 #endif /* CFO_PLOT_LEN > 0 */
 
 #if SYNC_PLOT_LEN > 0
@@ -537,7 +563,7 @@ void* plot_thread_run(void* arg)
   plot_real_setLabels(&psync, (char*)"Time", (char*)"Error");
   plot_real_setYAxisScale(&psync, -2, +2);
 
-  plot_scatter_addToWindowGrid(&psync, (char*)"srsue", 1, row_count++);
+  plot_scatter_addToWindowGrid(&psync, (char*)"srssl", 1, row_count++);
 #endif /* SYNC_PLOT_LEN > 0 */
 
   int n;
@@ -545,26 +571,30 @@ void* plot_thread_run(void* arg)
   while (1) {
     sem_wait(&plot_sem);
 
-    if (readed_pdsch_re < SCATTER_PDSCH_PLOT_LEN) {
-      n = worker->read_pdsch_d(&tmp_plot2[readed_pdsch_re]);
-      readed_pdsch_re += n;
-    } else {
-      for (uint32_t tx = 0; tx < worker->get_cell_nof_ports(); tx++) {
-        for (uint32_t rx = 0; rx < worker->get_rx_nof_antennas(); rx++) {
-          n = worker->read_ce_abs(tmp_plot, tx, rx);
-          if (n > 0) {
-            plot_real_setNewData(&pce[tx][rx], tmp_plot, n);
-          }
-        }
-      }
-      if (readed_pdsch_re > 0) {
-        plot_scatter_setNewData(&pconst, tmp_plot2, readed_pdsch_re);
-      }
-      readed_pdsch_re = 0;
+    n = worker->read_pssch_d(&tmp_plot2[readed_pdsch_re]);
+    if(n>0) {
+      plot_scatter_setNewData(&pconst, tmp_plot2, n);
     }
 
+    for (uint32_t tx = 0; tx < worker->get_cell_nof_ports(); tx++) {
+      for (uint32_t rx = 0; rx < worker->get_rx_nof_antennas(); rx++) {
+        n = worker->read_ce_abs(tmp_plot, tx, rx);
+        if (n > 0) {
+          plot_real_setNewData(&pce[tx][rx], tmp_plot, n);
+        }
+      }
+    }
+
+    // plot time domain buffer
+    uint32_t td_n_samples = 0;
+    cf_t* td_samples = worker->read_td_samples(&td_n_samples);
+    plot_real_setNewData(&plot_td, (float *)td_samples, td_n_samples*2);
+
+    plot_real_setTitle(&plot_td, (char*)"Time domain");
+
+
 #if CFO_PLOT_LEN > 0
-    cfo_buffer[icfo] = worker->get_cfo() * 15000.0f;
+    cfo_buffer[icfo] = worker->get_cfo();
     icfo             = (icfo + 1) % CFO_PLOT_LEN;
     plot_real_setNewData(&pcfo, cfo_buffer, CFO_PLOT_LEN);
 #endif /* CFO_PLOT_LEN > 0 */

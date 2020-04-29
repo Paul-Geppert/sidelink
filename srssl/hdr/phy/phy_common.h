@@ -48,6 +48,7 @@
 
 #define TX_MODE_CONTINUOUS 1
 
+#include "ue_sl_sensing_sps.h"
 #include "phy_metrics.h"
 #include "srslte/common/gen_mch_tables.h"
 #include "srslte/common/log.h"
@@ -108,6 +109,7 @@ public:
   float         rsrp_pssch_per_ue[5];
   float         snr_psbch;
   float         rsrp_psbch;
+  float         sl_rssi;
 
   float         inst_sps_rsrp[1000]; // stores sps_rsrp value, for REST SPS_RSRP purpose.
   float         inst_sps_rssi[1000]; // stores sps_rssi value, for REST SPS_RSSI purpose. 
@@ -138,6 +140,9 @@ public:
 
   // Save last TBS for DL (Format1C)
   int last_dl_tbs[SRSLTE_MAX_HARQ_PROC][SRSLTE_MAX_CARRIERS][SRSLTE_MAX_CODEWORDS];
+
+  // Sensing SPS
+  srslte::SensingSPS* sensing_sps;
 
   phy_common(uint32_t max_workers);
 
@@ -289,6 +294,8 @@ private:
   bool is_mch_subframe(srslte_mbsfn_cfg_t* cfg, uint32_t phy_tti);
 
   bool is_mcch_subframe(srslte_mbsfn_cfg_t* cfg, uint32_t phy_tti);
+
+
 };
 } // namespace srsue
 

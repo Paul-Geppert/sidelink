@@ -94,6 +94,9 @@ typedef struct SRSLTE_API {
   cf_t *sf_symbols;
   cf_t *ce;
 
+  cf_t *ce_plot;
+  cf_t *td_plot;
+
   srslte_softbuffer_rx_t *softbuffers[SRSLTE_MAX_CODEWORDS];
   
   srslte_ofdm_t fft;

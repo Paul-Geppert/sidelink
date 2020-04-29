@@ -1,0 +1,24 @@
+stages:
+  - build
+  - test
+
+compile:
+  stage: build
+  tags:
+    - docker
+  image: dschaeufele/srslte-build-env
+  script:
+    - mkdir build; cd build; cmake -DENABLE_GUI=OFF ../; make -j4
+  artifacts:
+    paths:
+      - build/
+    expire_in: 1 week
+
+test:
+  stage: test
+  tags:
+    - docker
+  image: dschaeufele/srslte-build-env
+  script:
+    - cd build; make test
+

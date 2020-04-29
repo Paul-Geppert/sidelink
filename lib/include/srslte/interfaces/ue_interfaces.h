@@ -416,9 +416,11 @@ public:
     bool     phich_available;
     bool     hi_value;
 
+#ifndef USE_SENSING_SPS
     // sidelink extension, eventually we should reflect this in a new typedef
     uint32_t sl_tti; // sidelink subframe id
     uint8_t  sl_gap; // sidelink sf_gap
+#endif
   } mac_grant_ul_t;
 
   typedef struct {

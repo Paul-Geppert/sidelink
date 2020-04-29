@@ -77,6 +77,18 @@ The stack generates a tunnel interface called tun_srssl with IP: 10.0.2.10+sidel
 Any IP package is routed to air and can be decoded by any other node.
 
 
+Semi Persistent Scheduling(SPS)
+-------------------------------
+
+To enable SPS instead of the default one-shot scheduler we need set the _USE_SENSING_SPS_ flag in [CMakeLists.txt](CMakeLists.txt) and issue a recompilation. When run, the node always has an active 10 MHz Scheduler running, even when there is no data transmitted(in this case we do not transmit but keep the SPS subscription active).
+
+
+Automatic Gain Control(AGC)
+---------------------------
+
+The AGC is enabled by not setting a tx_gain value during startup or in the configuration file(this is the default). When we run in AGC mode we always try to set the receive gain to the largest possible value, where no received signal runs into clipping. The measurement interval for this is larger then 100 ms to make sure we catch transmission of at least 10 Hz SPS.
+
+
 REST API
 --------------------------
 During runtime the REST API can be used to get status information and change settings.

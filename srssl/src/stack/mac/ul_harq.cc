@@ -135,10 +135,23 @@ void ul_harq_entity::new_grant_ul(mac_interface_phy_lte::mac_grant_ul_t  grant,
     }
   } else if (SRSLTE_RNTI_SL_RANDOM == grant.rnti) {
 
+
+#ifdef USE_SENSING_SPS
+    // The caller is aware of what is a retransmission or not,
+    // and specifies this in grant.tb.ndi
+    // The caller also selects the harq pid.
+    proc[grant.pid].new_grant_ul(grant, action);
+#else
+    // The caller is not aware of what is a retransmission or not,
+    // This function will  determine the harq process to use.
+
     // check if current subframe corresponds to a retransmission opportunity for this sidelink process
     if(1 == proc[grant.sl_tti % SRSLTE_MAX_HARQ_PROC].get_nof_retx()) {
       // trigger a retransmission
       grant.pid = grant.sl_tti % SRSLTE_MAX_HARQ_PROC;
+      grant.tb.ndi_present = true;
+      grant.tb.ndi = false;
+
       // uint32_t tti_tx = tti;//(tti+action->tti_offset)%10240;
 
       printf("trigger retransmission for process %d\n", grant.pid);
@@ -151,11 +164,13 @@ void ul_harq_entity::new_grant_ul(mac_interface_phy_lte::mac_grant_ul_t  grant,
       // we use the process which is responsible for the retransmission
       // todo: we are still unsure, how many of these processes are required
       grant.pid = ((grant.sl_tti + grant.sl_gap)%10240) % SRSLTE_MAX_HARQ_PROC;
+      grant.tb.ndi_present = true;
+      grant.tb.ndi = true;
       // printf("trigger new transmission for process %d\n", grant.pid);
       // proc[pidof(tti_tx)].run_tti(tti_tx, grant, ack, action);
       proc[grant.pid].new_grant_ul(grant, action);
-
     }
+#endif
 
   } else {
     Warning("Received grant for unknnown rnti=0x%x\n", grant.rnti);
@@ -241,21 +256,46 @@ void ul_harq_entity::ul_harq_process::new_grant_ul(mac_interface_phy_lte::mac_gr
                                                    mac_interface_phy_lte::tb_action_ul_t* action)
 {
   // sidelink extension
+  // we use ndi=true to indicate an adaptive retransmission
   if(SRSLTE_RNTI_SL_RANDOM == grant.rnti) {
 
-    if(current_tx_nb == 1) {
+    // Temporary workaround
+    // Since we currently DTX if we have nothing to send,
+    // it is possible for the caller to request a retransmission
+    // when we never sent the original TB.
+    if (!has_grant() && grant.tb.ndi_present && grant.tb.ndi==false) {
+        Error("Requested a retransmission, but no existing grant\n");
+        return;
+    }
+
+    // Reset HARQ process if TB has changed
+    if (has_grant() && grant.tb.ndi_present && grant.tb.ndi==false) {
+      if (grant.tb.tbs != cur_grant.tb.tbs && cur_grant.tb.tbs > 0 && grant.tb.tbs > 0) {
+        Debug("UL %d: Reset due to change of dci size last_grant=%d, new_grant=%d\n", pid, cur_grant.tb.tbs, grant.tb.tbs);
+        reset();
+      }
+    }
+
+    if (has_grant() && grant.tb.ndi_present && grant.tb.ndi==false) {
       // this is a retransmission
       generate_tx(action);
-
     } else {
+      // this is a new transmission
+      reset();
+
+      // Check buffer size
+      if (grant.tb.tbs > payload_buffer_len) {
+        Error("Grant size exceeds payload buffer size (%d > %d)\n", grant.tb.tbs, payload_buffer_len);
+        return;
+      }
+
       // Request a MAC PDU from the Multiplexing & Assemble Unit
+      // @todo should we DTX if we have a grant but nothing to send?
       pdu_ptr = harq_entity->mux_unit->sl_pdu_get(payload_buffer.get(), grant.tb.tbs);
       if (pdu_ptr) {
-        reset();
         generate_new_tx(grant, action);
       } else {
         Warning("Uplink dci but no MAC PDU in Multiplex Unit buffer\n");
-        // printf("Uplink dci but no MAC PDU in Multiplex Unit buffer\n");
       }
     }
     return;

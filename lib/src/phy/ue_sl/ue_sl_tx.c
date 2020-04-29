@@ -91,7 +91,7 @@ int srslte_ue_sl_tx_init(srslte_ue_sl_tx_t *q,
     srslte_ofdm_set_normalize(&q->fft, true);
 
     q->out_buffer = out_buffer;
-    q->normalize_en = false; 
+    q->normalize_en = true; 
 
     if (srslte_cfo_init(&q->cfo, MAX_SFLEN)) {
       fprintf(stderr, "Error creating CFO object\n");
@@ -304,6 +304,13 @@ void srslte_ue_sl_tx_set_normalization(srslte_ue_sl_tx_t *q, bool enabled)
   q->normalize_en = enabled;
 }
 
+void srslte_ue_sl_tx_apply_norm(srslte_ue_sl_tx_t *q, uint32_t nof_prb) {
+  if (q->normalize_en && nof_prb > 0) {
+    float scale = (float) q->cell.nof_prb/15/sqrtf(nof_prb);
+    srslte_vec_sc_prod_cfc(q->out_buffer, scale, q->out_buffer, SRSLTE_SF_LEN_PRB(q->cell.nof_prb));
+  }
+}
+
 #if 0
 // (rl, merge_19_06) 
 /* Precalculate the PUSCH scramble sequences for a given RNTI. This function takes a while
@@ -397,7 +404,6 @@ static void pucch_encode_bits(srslte_uci_data_t *uci_data, srslte_pucch_format_t
     }
   }
 }
-#endif
 
 static float limit_norm_factor(srslte_ue_sl_tx_t *q, float norm_factor, cf_t *output_signal)
 {
@@ -418,8 +424,6 @@ float srslte_ue_sl_tx_get_last_amplitude(srslte_ue_sl_tx_t *q) {
   return q->last_amplitude;
 }
 
-#if 0
-// (rl, merge_19_06) 
 /* Choose PUCCH format as in Sec 10.1 of 36.213 and generate PUCCH signal 
  */
 int srslte_ue_sl_tx_pucch_encode(srslte_ue_sl_tx_t *q, srslte_uci_data_t uci_data,

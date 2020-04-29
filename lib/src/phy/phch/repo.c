@@ -190,12 +190,58 @@ void srslte_repo_decode_frl(srslte_repo_t *q, srslte_ra_sl_sci_t *sci) {
 
 }
 
+/**
+ * @brief Decodes resource reservation from SCI-1 bit format
+ * 
+ * See 36.213 Table 14.2.1-1
+ * 
+ * @param rr value from SCI-1
+ * @return Resource reservation interval
+ */
+uint8_t srslte_repo_decode_rr(uint32_t rr) {
+  if(rr>=1 && rr<=10) {
+    return rr*100;
+  }
 
+  if(rr == 11) {
+    return 50;
+  }
+
+  if(rr == 12) {
+    return 20;
+  }
+
+  return 0;
+}
+
+/**
+ * @brief Encodes Resource reservation interval into SCI-1 format
+ * 
+ * See 36.213 Table 14.2.1-1
+ * 
+ * @param rri Resource reservation interval
+ * @return rr Resource reservationin SCI-1 format
+ */
+uint32_t srslte_repo_encode_rr(uint8_t rri) {
+  if(1*100 <= rri && rri <= 10*100){
+    return rri/100;
+  }
+
+  if(rri == 50) {
+    return 11;
+  }
+
+  if(rri == 20) {
+    return 12;
+  }
+
+  return 0;
+}
 
 void srslte_repo_sci_encode(srslte_repo_t *q, uint8_t *sci_packed, srslte_ra_sl_sci_t *sci) {
 
   srslte_bit_unpack(sci->priority, &sci_packed, 3);
-  srslte_bit_unpack(sci->resource_reservation, &sci_packed, 4);
+  srslte_bit_unpack(srslte_repo_encode_rr(sci->resource_reservation), &sci_packed, 4);
   //Frequency resource location of initial transmission and retransmission
   srslte_bit_unpack(sci->frl, &sci_packed, srslte_repo_frl_len(q));
   // Time gap between initial transmission and retransmission
@@ -221,7 +267,8 @@ int srslte_repo_sci_decode(srslte_repo_t *q, uint8_t *sci_packed, srslte_ra_sl_s
   uint8_t *sci_end = sci_packed + 32;//SRSLTE_SCI1_MAX_BITS;
 
   sci->priority = srslte_bit_pack(&sci_packed, 3);
-  sci->resource_reservation = srslte_bit_pack(&sci_packed, 4);
+  // Resource reservation interval
+  sci->resource_reservation = srslte_repo_decode_rr(srslte_bit_pack(&sci_packed, 4));
   //Frequency resource location of initial transmission and retransmission
   sci->frl = srslte_bit_pack(&sci_packed, srslte_repo_frl_len(q));
   // Time gap between initial transmission and retransmission
@@ -376,9 +423,9 @@ uint32_t srslte_repo_get_n_PSSCH_ssf(srslte_repo_t *q, uint32_t subframe) {
  * 
  * @param q 
  * @param subframe 
- * @return uint32_t 
+ * @return int32_t 
  */
-uint32_t srslte_repo_get_t_SL_k(srslte_repo_t *q, uint32_t subframe) {
+int32_t srslte_repo_get_t_SL_k(srslte_repo_t *q, uint32_t subframe) {
 
   return q->subframe_rp[subframe%10240];
 }

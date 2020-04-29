@@ -136,6 +136,13 @@ int srslte_ofdm_init_mbsfn_(srslte_ofdm_t *q, srslte_cp_t cp, cf_t *in_buffer, c
     return -1;
   }
 
+  q->cp_shift_nsamples = 0;
+  q->cp_shift_correction = srslte_vec_malloc(sizeof(cf_t) * q->nof_re);
+  if (!q->cp_shift_correction) {
+    perror("malloc");
+    return -1;
+  }
+
   srslte_dft_plan_set_mirror(&q->fft_plan, true);
   srslte_dft_plan_set_dc(&q->fft_plan, true);
 
@@ -206,7 +213,7 @@ int srslte_ofdm_replan_(srslte_ofdm_t *q, srslte_cp_t cp, int symbol_sz, int nof
 
     if (dir == SRSLTE_DFT_FORWARD) {
       if (srslte_dft_plan_guru_c(&q->fft_plan_sf[slot], symbol_sz, dir,
-                                 in_buffer + cp1 + q->slot_sz * slot,
+                                 in_buffer + cp1 - q->cp_shift_nsamples + q->slot_sz * slot,
                                  q->tmp + q->nof_symbols * q->symbol_sz * slot,
                                  1, 1, SRSLTE_CP_NSYMB(cp), symbol_sz + cp2, symbol_sz)) {
         ERROR("Error: Creating DFT plan (1)\n");
@@ -252,6 +259,9 @@ void srslte_ofdm_free_(srslte_ofdm_t *q) {
   }
   if (q->shift_buffer) {
     free(q->shift_buffer);
+  }
+  if (q->cp_shift_correction) {
+    free(q->cp_shift_correction);
   }
   bzero(q, sizeof(srslte_ofdm_t));
 }
@@ -401,6 +411,41 @@ int srslte_ofdm_set_freq_shift(srslte_ofdm_t *q, float freq_shift) {
   return SRSLTE_SUCCESS;
 }
 
+
+/** 
+ *  This shifts the FFT windows into the CP.
+ *  Must be called after OFDM init.
+ */
+int srslte_ofdm_set_cp_shift(srslte_ofdm_t *q, int cp_shift) {
+  cf_t *ptr = q->cp_shift_correction;
+
+  int cp1 = SRSLTE_CP_ISNORM(q->cp)?SRSLTE_CP_LEN_NORM(0, q->symbol_sz):SRSLTE_CP_LEN_EXT(q->symbol_sz);
+
+  if(cp_shift > cp1) {
+    ERROR("OFDM: CP shift value(%d) is too large.\n", cp_shift);
+    return -1;
+  } else {
+    printf("OFDM: Setting cp shift value: %d\n", cp_shift);
+  }
+
+  q->cp_shift_nsamples = cp_shift;
+
+  uint32_t dc = (q->fft_plan.dc) ? 1:0;
+
+  // we apply the phase correction, after the fft-shift happened and the sideband carriers have
+  // been cur off, therefore we need to apply this transformation here
+  for(int i=0; i<q->nof_re / 2; i++) {
+    // move end of correction buffer into fftshifted buffer
+    ptr[i] = conj(cexpf(-1*I*2*M_PI*((float)q->cp_shift_nsamples)*(q->symbol_sz - q->nof_re / 2 + i)/q->symbol_sz));
+
+    // move second part
+    ptr[i + q->nof_re / 2] = conj(cexpf(-1*I*2*M_PI*((float)q->cp_shift_nsamples)*(dc + i)/q->symbol_sz));
+  }
+
+  // replan to enable the shift
+  return srslte_ofdm_replan_(q, q->cp, q->symbol_sz, q->nof_re/12);
+}
+
 void srslte_ofdm_tx_free(srslte_ofdm_t *q) {
   srslte_ofdm_free_(q);
 }
@@ -437,6 +482,10 @@ void srslte_ofdm_rx_slot(srslte_ofdm_t *q, int slot_in_sf) {
 
     if (q->fft_plan.norm) {
       srslte_vec_sc_prod_cfc(output, norm, output, q->nof_re);
+    }
+
+    if (q->cp_shift_nsamples > 0) {
+      srslte_vec_prod_ccc (output, q->cp_shift_correction, output, q->nof_re);
     }
 
     tmp += q->symbol_sz;

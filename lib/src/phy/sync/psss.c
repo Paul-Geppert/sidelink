@@ -652,19 +652,34 @@ int srslte_psss_find_psss(srslte_psss_t *q, const cf_t *input, float *corr_peak_
       // printf("\t next Peak pos is %d with value %f\n", next_peak, q->conv_output_abs[next_peak]);
 
       if(abs(abs(corr_peak_pos - next_peak) - (q->fft_size + SRSLTE_CP_LEN((q->fft_size),SRSLTE_CP_NORM_LEN))) > 5){
-        // printf("PSSS peaks are too far apart, no PSSS detected.\n");
+        printf("PSSS peaks are too far apart: [%d] = %f [%d] = %f\n",
+                corr_peak_pos, q->conv_output_abs[corr_peak_pos],
+                next_peak, q->conv_output_abs[next_peak]);
         *corr_peak_value = 0;
         return 0;
-      } 
+      }
+
+      // check if both peaks are in same magnitude range
+      float ratio = q->conv_output_abs[corr_peak_pos] / q->conv_output_abs[next_peak];
+      if (ratio > 2.0 || ratio < 0.5) {
+        printf("PSSS peaks values are not similar: [%d] = %f [%d] = %f\n",
+                corr_peak_pos, q->conv_output_abs[corr_peak_pos],
+                next_peak, q->conv_output_abs[next_peak]);
+        *corr_peak_value = 0;
+        return 0;
+      }
 
 
       int psr = srslte_psss_compute_peak_sidelobe_pos2(q->conv_output_abs, corr_peak_pos, next_peak, conv_output_len);
 
-      printf("psr: %d %f\n", psr, q->conv_output_abs[psr] );
+      printf("psr: [%d] = %f corr_peak_pos: [%d] = %f next_peaks [%d] = %f\n",
+              psr, q->conv_output_abs[psr],
+              corr_peak_pos, q->conv_output_abs[corr_peak_pos],
+              next_peak, q->conv_output_abs[next_peak]);
 
       *corr_peak_value = q->conv_output_abs[corr_peak_pos] / q->conv_output_abs[psr];
 
-      q->peak_value = q->conv_output_avg[corr_peak_pos];
+      q->peak_value = q->conv_output_abs[corr_peak_pos];
 
       return corr_peak_pos < next_peak ? corr_peak_pos : next_peak;
 

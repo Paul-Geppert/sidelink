@@ -129,11 +129,15 @@ SRSLTE_API void srslte_repo_encode_frl(srslte_repo_t *q,
 
 SRSLTE_API int srslte_repo_frl_len(srslte_repo_t *q);
 
+SRSLTE_API uint32_t srslte_repo_encode_rr(uint8_t rri);
+
+SRSLTE_API uint8_t srslte_repo_decode_rr(uint32_t rr);
+
 SRSLTE_API uint32_t srslte_repo_get_n_PSSCH_ssf(srslte_repo_t *q,
                                                 uint32_t subframe);
 
-SRSLTE_API uint32_t srslte_repo_get_t_SL_k(srslte_repo_t *q,
-                                            uint32_t subframe);
+SRSLTE_API int32_t srslte_repo_get_t_SL_k(srslte_repo_t *q,
+                                          uint32_t subframe);
 
 #endif // SRSLTE_REPO_H
 

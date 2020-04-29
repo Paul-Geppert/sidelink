@@ -121,6 +121,7 @@ typedef struct {
   float rsrp_corr[SRSLTE_MAX_PORTS][SRSLTE_MAX_PORTS]; 
   float pilot_power; 
   float noise_estimate;
+  float ce_power_estimate;
 
   bool     rsrp_neighbour; 
 } srslte_chest_sl_t;
@@ -189,6 +190,8 @@ SRSLTE_API int srslte_chest_ul_estimate_pucch(srslte_chest_ul_t *q,
 SRSLTE_API float srslte_chest_sl_get_noise_estimate(srslte_chest_sl_t *q); 
 
 SRSLTE_API float srslte_chest_sl_get_snr(srslte_chest_sl_t *q);
+
+SRSLTE_API float srslte_chest_sl_get_snr_db(srslte_chest_sl_t *q);
 
 
 #endif // SRSLTE_CHEST_SL_H

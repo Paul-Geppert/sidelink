@@ -112,8 +112,7 @@ uint32_t syncOffsetIndicator_r12 = 0;
 typedef struct {
   int nof_subframes;
   int cpu_affinity;
-  bool disable_plots;
-  bool disable_plots_except_constellation;
+  bool enable_debug_dumps;
   bool disable_cfo; 
   uint32_t time_offset; 
   int force_N_id_2;
@@ -125,6 +124,7 @@ typedef struct {
   uint32_t file_nof_prb;
   uint32_t file_nof_ports;
   uint32_t file_cell_id;
+  bool file_lte_rate;
   bool enable_cfo_ref;
   bool average_subframe;
   char *rf_args; 
@@ -144,8 +144,7 @@ typedef struct {
 }prog_args_t;
 
 void args_default(prog_args_t *args) {
-  args->disable_plots = false; 
-  args->disable_plots_except_constellation = false; 
+  args->enable_debug_dumps = false;
   args->nof_subframes = -1;
   args->rnti = SRSLTE_SIRNTI;
   args->force_N_id_2 = -1; // Pick the best
@@ -158,6 +157,7 @@ void args_default(prog_args_t *args) {
   args->file_cell_id = 0; 
   args->file_offset_time = 0; 
   args->file_offset_freq = 0; 
+  args->file_lte_rate = false;
   args->rf_args = "";
   args->rf_freq = -1.0;
   args->rf_nof_rx_ant = 1;
@@ -199,18 +199,14 @@ void usage(prog_args_t *args, char *prog) {
   printf("\t-p nof_prb for input file [Default %d]\n", args->file_nof_prb);
   printf("\t-P nof_ports for input file [Default %d]\n", args->file_nof_ports);
   printf("\t-c cell_id for input file [Default %d]\n", args->file_cell_id);
+  printf("\t-L use LTE sampling rate on file(instead of 3/4) [Default %d]\n", args->file_lte_rate);
   printf("\t-r RNTI in Hex [Default 0x%x]\n",args->rnti);
   printf("\t-l Force N_id_2 [Default best]\n");
   printf("\t-C Disable CFO correction [Default %s]\n", args->disable_cfo?"Disabled":"Enabled");
   printf("\t-F Enable RS-based CFO correction [Default %s]\n", !args->enable_cfo_ref?"Disabled":"Enabled");
   printf("\t-R Average channel estimates on 1 ms [Default %s]\n", !args->average_subframe?"Disabled":"Enabled");
   printf("\t-t Add time offset [Default %d]\n", args->time_offset);
-#ifndef DISABLE_GRAPHICS
-  printf("\t-d disable plots [Default enabled]\n");
-  printf("\t-D disable all but constellation plots [Default enabled]\n");
-#else
-  printf("\t plots are disabled. Graphics library not available\n");
-#endif
+  printf("\t-D Enable dumping of various debug vectors[Default %s]\n", args->enable_debug_dumps?"Disabled":"Enabled");
   printf("\t-y set the cpu affinity mask [Default %d] \n  ",args->cpu_affinity);
   printf("\t-n nof_subframes [Default %d]\n", args->nof_subframes);
   printf("\t-s frequency channel smooth filter length, must be odd [Default %d]\n", args->smooth_filter_len);
@@ -226,7 +222,7 @@ void usage(prog_args_t *args, char *prog) {
 void parse_args(prog_args_t *args, int argc, char **argv) {
   int opt;
   args_default(args);
-  while ((opt = getopt(argc, argv, "aABoglipPcOCtdDFRnvrfuUsSZyWMN")) != -1) {
+  while ((opt = getopt(argc, argv, "aABoglLipPcOCtdDFRnvrfuUsSZyWMN")) != -1) {
     switch (opt) {
     case 'B':
       args->decode_psbch = true;
@@ -251,6 +247,9 @@ void parse_args(prog_args_t *args, int argc, char **argv) {
       break;
     case 'c':
       args->file_cell_id = atoi(argv[optind]);
+      break;
+    case 'L':
+      args->file_lte_rate = true;
       break;
     case 'a':
       args->rf_args = argv[optind];
@@ -294,11 +293,8 @@ void parse_args(prog_args_t *args, int argc, char **argv) {
     case 's':
       args->smooth_filter_len = atoi(argv[optind]);
       break;
-    case 'd':
-      args->disable_plots = true;
-      break;
     case 'D':
-      args->disable_plots_except_constellation = true;
+      args->enable_debug_dumps = true;
       break;
     case 'v':
       srslte_verbose++;
@@ -375,7 +371,6 @@ int main(int argc, char **argv) {
   srslte_cell_t cell;  
   int64_t sf_cnt;
   
-
   uint32_t nof_trials = 0; 
   int sfn_offset;
   float cfo = 0; 
@@ -383,7 +378,10 @@ int main(int argc, char **argv) {
   srslte_debug_handle_crash(argc, argv);
 
   parse_args(&prog_args, argc, argv);
-  
+
+  // set lte symbol size
+  srslte_use_standard_symbol_size(prog_args.file_lte_rate);
+
   for (int i = 0; i< SRSLTE_MAX_CODEWORDS; i++) {
     data[i] = srslte_vec_malloc(sizeof(uint8_t)*1500*8);
     if (!data[i]) {
@@ -535,7 +533,7 @@ int main(int argc, char **argv) {
 
     // move samples into CP
     cf_t *sf_buffer_n[SRSLTE_MAX_PORTS] = {NULL};
-    sf_buffer_n[0] = sf_buffer[0] + SRSLTE_CP_LEN(srslte_symbol_sz(cell.nof_prb), SRSLTE_CP_NORM_LEN) / 8;
+    sf_buffer_n[0] = sf_buffer[0];// + SRSLTE_CP_LEN(srslte_symbol_sz(cell.nof_prb), SRSLTE_CP_NORM_LEN) / 8;
 
     ret = srslte_ue_sl_sync_zerocopy_multi(&ue_sl_sync, sf_buffer_n);
     if (ret < 0) {
@@ -570,6 +568,8 @@ int main(int argc, char **argv) {
           srslte_psbch_mib_unpack(bch_payload, &cell, &dfn, &dsfn);
         }
 
+        printf("PSBCH SNR: %f\n", 10*log10(ue_sl_mib.chest.pilot_power / ue_sl_mib.chest.noise_estimate));
+
       } else {
         //@todo: cleanup this section, as well as then whole file
         int32_t decoded_bytes = 0;
@@ -601,6 +601,32 @@ int main(int argc, char **argv) {
                                     data[0],
                                     &decoded_bytes);
 
+        }
+
+        if(prog_args.enable_debug_dumps) {
+          // store some debug informations
+          srslte_filesink_t fsink;
+          
+          srslte_filesink_init(&fsink, "snr_dec_fft_out", SRSLTE_COMPLEX_FLOAT_BIN);
+          srslte_filesink_write(&fsink, (void*) ue_sl_mib.fft.out_buffer, cell.nof_prb * SRSLTE_NRE * 14);
+          srslte_filesink_free(&fsink);
+
+          srslte_filesink_init(&fsink, "snr_dec_fft_in", SRSLTE_COMPLEX_FLOAT_BIN);
+          srslte_filesink_write(&fsink, (void*) ue_sl_mib.fft.in_buffer, SRSLTE_SF_LEN(srslte_symbol_sz(cell.nof_prb)));
+          srslte_filesink_free(&fsink);
+
+          srslte_filesink_init(&fsink, "snr_dec_pscch_const", SRSLTE_COMPLEX_FLOAT_BIN);
+          srslte_filesink_write(&fsink, (void*) ue_sl_mib.pscch.d, 2 * SRSLTE_NRE * 9);
+          srslte_filesink_free(&fsink);
+
+          // we do not know how many symbols we decoded, so we dump all of them
+          srslte_filesink_init(&fsink, "snr_dec_pssch_const", SRSLTE_COMPLEX_FLOAT_BIN);
+          srslte_filesink_write(&fsink, (void*) ue_sl_mib.pssch.d[0], ue_sl_mib.pssch.max_re);
+          srslte_filesink_free(&fsink);
+
+          srslte_filesink_init(&fsink, "snr_dec_ce", SRSLTE_COMPLEX_FLOAT_BIN);
+          srslte_filesink_write(&fsink, (void*) ue_sl_mib.ce, cell.nof_prb * SRSLTE_NRE * 14);
+          srslte_filesink_free(&fsink);
         }
       }
 

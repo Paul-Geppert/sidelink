@@ -536,9 +536,11 @@ int rf_uhd_open_multi(char *args, void **h, uint32_t nof_channels)
     
     // Set external clock reference   
     if (clock_src == EXTERNAL) {
+      printf("Setting usrp clock source to: \"external\"\n");
       uhd_usrp_set_clock_source(handler->usrp, "external", 0);
       uhd_usrp_set_time_source(handler->usrp, "external", 0);
     } else if (clock_src == GPSDO) {
+      printf("Setting usrp clock source to: \"gpsdo\"\n");
       uhd_usrp_set_clock_source(handler->usrp, "gpsdo", 0);
       uhd_usrp_set_time_source(handler->usrp, "gpsdo", 0);
     }

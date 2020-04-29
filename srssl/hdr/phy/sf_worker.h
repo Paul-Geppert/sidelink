@@ -78,6 +78,7 @@ public:
   void  set_tx_time(uint32_t radio_idx, srslte_timestamp_t tx_time, int next_offset);
   void  set_prach(cf_t* prach_ptr, float prach_power);
   void  set_cfo(const uint32_t& cc_idx, float cfo);
+  float get_last_agc();
 
   void set_tdd_config(srslte_tdd_config_t config);
   void set_pcell_config(phy_interface_rrc_lte::phy_cfg_t* phy_cfg);
@@ -87,6 +88,7 @@ public:
 
   /* Methods for plotting */
   int      read_ce_abs(float* ce_abs, uint32_t tx_antenna, uint32_t rx_antenna);
+  cf_t*    read_td_samples(uint32_t* n_samples);
   uint32_t get_cell_nof_ports()
   {
     if (cell_initiated) {
@@ -97,6 +99,7 @@ public:
   }
   uint32_t get_rx_nof_antennas() { return phy->args->nof_rx_ant; }
   int      read_pdsch_d(cf_t* pdsch_d);
+  int      read_pssch_d(cf_t* pssch_d);
   float    get_sync_error();
   float    get_cfo();
   void     start_plot();

@@ -81,8 +81,10 @@ option(ENABLE_ASAN     "Enable gcc/clang address sanitizer"       OFF)
 option(ENABLE_MSAN     "Enable clang memory sanitizer"            OFF)
 option(ENABLE_TIDY     "Enable clang tidy"                        OFF)
 
-option(USE_LTE_RATES   "Use standard LTE sampling rates"          ON)
+option(USE_LTE_RATES   "Use standard LTE sampling rates"          OFF)
 option(USE_GLIBC_IPV6  "Use glibc's own ipv6.h"                   ON)
+
+option(USE_SENSING_SPS  "Use Sensing SPS"                         OFF)
 
 set(GCC_ARCH native CACHE STRING "GCC compile for specific architecture.")
 
@@ -319,6 +321,11 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU" OR CMAKE_C_COMPILER_ID MATCHES "Clang")
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -fno-trapping-math -fno-math-errno -DBUILD_TYPE_RELEASE")
     endif(${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
   endif(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+
+  if (USE_SENSING_SPS)
+    message(STATUS "Using Sensing SPS")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_SENSING_SPS")
+  endif (USE_SENSING_SPS)
 
   if (USE_LTE_RATES)
     message(STATUS "Using standard LTE sampling rates")

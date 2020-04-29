@@ -190,11 +190,11 @@ void demux::process_pdu(uint8_t* mac_pdu, uint32_t nof_bytes, srslte::pdu_queue:
   switch(channel) {
     case srslte::pdu_queue::SLSCH:
 
-      sl_mac_msg.snr = *((float*)mac_pdu);
+      sl_mac_msg.snr = *((float*)(mac_pdu + nof_bytes));
 
       // Unpack SLSCH MAC PDU
       sl_mac_msg.init_rx(nof_bytes);
-      sl_mac_msg.parse_packet(mac_pdu + sizeof(float));
+      sl_mac_msg.parse_packet(mac_pdu);
       // sl_mac_msg.fprint(stdout);
       process_sl_sch_pdu(&sl_mac_msg);
       pdus.deallocate(mac_pdu);

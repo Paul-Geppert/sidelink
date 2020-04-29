@@ -175,10 +175,13 @@ SRSLTE_API void srslte_ue_sl_tx_set_cfo_enable(srslte_ue_sl_tx_t *q,
 SRSLTE_API void srslte_ue_sl_tx_set_normalization(srslte_ue_sl_tx_t *q, 
                                                bool enabled);
 
-SRSLTE_API float srslte_ue_sl_tx_get_last_amplitude(srslte_ue_sl_tx_t *q);
+SRSLTE_API void srslte_ue_sl_tx_apply_norm(srslte_ue_sl_tx_t *q,
+                                            uint32_t nof_prb);
 
 #if 0
 // (rl, merge_19_06) 
+SRSLTE_API float srslte_ue_sl_tx_get_last_amplitude(srslte_ue_sl_tx_t *q);
+
 SRSLTE_API void srslte_ue_sl_tx_set_cfg(srslte_ue_sl_tx_t *q, 
                                      srslte_refsignal_dmrs_pusch_cfg_t *dmrs_cfg, 
                                      srslte_refsignal_srs_cfg_t        *srs_cfg,

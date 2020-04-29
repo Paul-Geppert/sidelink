@@ -65,11 +65,9 @@
 
 #define MAX_TIME_OFFSET 128
 
-#define TRACK_MAX_LOST          4
+#define TRACK_MAX_LOST          10
 #define TRACK_FRAME_SIZE        32
 #define FIND_NOF_AVG_FRAMES     4
-#define DEFAULT_SL_SAMPLE_OFFSET_CORRECT_PERIOD  0
-#define DEFAULT_SFO_EMA_COEFF                 0.1
 
 
 cf_t dummy_buffer0[15*2048/2];
@@ -170,17 +168,23 @@ void srslte_ue_sl_sync_reset(srslte_ue_sl_sync_t *q) {
   q->frame_find_cnt = 0;
 }
 
-#if 0
-int srslte_ue_sync_start_agc(srslte_ue_sl_sync_t *q, double (set_gain_callback)(void*, double), float init_gain_value) {
-  int n = srslte_agc_init_uhd(&q->agc, SRSLTE_AGC_MODE_PEAK_AMPLITUDE, 0, set_gain_callback, q->stream);
+int srslte_ue_sl_sync_start_agc(srslte_ue_sl_sync_t *q,
+                             double (set_gain_callback)(void *, double),
+                             double min_gain,
+                             double max_gain,
+                             double init_gain_value) {
+  // we need to run a very large period to be able to sense at least 10Hz sidelink transmissions
+  int n = srslte_agc_init_uhd(&q->agc, SRSLTE_AGC_MODE_PEAK_AMPLITUDE, 120, set_gain_callback, q->stream);
   q->do_agc = n==0?true:false;
   if (q->do_agc) {
+    srslte_agc_set_gain_range(&q->agc, min_gain, max_gain);
     srslte_agc_set_gain(&q->agc, init_gain_value);
-    srslte_ue_sync_set_agc_period(q, 4);
+
+    // period is not used in sidelinkd AGC
+    srslte_ue_sl_sync_set_agc_period(q, 4);
   }
   return n; 
 }
-#endif
 
 int sl_recv_callback_multi_to_single(void *h, cf_t *x[SRSLTE_MAX_PORTS], uint32_t nsamples, srslte_timestamp_t*t)
 {
@@ -237,7 +241,7 @@ int srslte_ue_sl_sync_init_multi_decim(srslte_ue_sl_sync_t *q,
     q->sf_len = SRSLTE_SF_LEN(q->fft_size);
     q->file_mode = false; 
     q->agc_period = 0;
-    q->sample_offset_correct_period = DEFAULT_SL_SAMPLE_OFFSET_CORRECT_PERIOD; 
+    q->sample_offset_correct_period = DEFAULT_SAMPLE_OFFSET_CORRECT_PERIOD;
     q->sfo_ema                      = DEFAULT_SFO_EMA_COEFF; 
 
     q->max_prb = max_prb;
@@ -508,10 +512,11 @@ int srslte_ue_sync_get_last_sample_offset(srslte_ue_sl_sync_t *q) {
   return q->last_sample_offset; 
 }
 
-void srslte_ue_sync_set_sample_offset_correct_period(srslte_ue_sl_sync_t *q, uint32_t nof_subframes) {
+#endif
+
+void srslte_ue_sl_sync_set_sfo_correct_period(srslte_ue_sl_sync_t *q, uint32_t nof_subframes) {
   q->sample_offset_correct_period = nof_subframes; 
 }
-#endif
 
 void srslte_ue_sl_sync_set_sfo_ema(srslte_ue_sl_sync_t *q, float ema_coefficient) {
   q->sfo_ema = ema_coefficient; 
@@ -530,11 +535,9 @@ void srslte_ue_sl_sync_set_N_id_2(srslte_ue_sl_sync_t *q, uint32_t N_id_2) {
   }
 }
 
-#if 0
-void srslte_ue_sync_set_agc_period(srslte_ue_sl_sync_t *q, uint32_t period) {
+void srslte_ue_sl_sync_set_agc_period(srslte_ue_sl_sync_t *q, uint32_t period) {
   q->agc_period = period; 
 }
-#endif
 
 static int find_peak_ok(srslte_ue_sl_sync_t *q, cf_t *input_buffer[SRSLTE_MAX_PORTS]) {
 
@@ -547,7 +550,6 @@ static int find_peak_ok(srslte_ue_sl_sync_t *q, cf_t *input_buffer[SRSLTE_MAX_PO
   }
 
   q->sf_idx = 0;
-  printf("find_peak_ok sf_idx: %d\n", q->sf_idx);
   
   q->frame_find_cnt++;  
   DEBUG("Found peak %d at %d, value %.3f, Cell_id: %d CP: %s\n", 
@@ -656,7 +658,7 @@ static int track_peak_ok(srslte_ue_sl_sync_t *q, uint32_t track_idx) {
       INFO("Time offset adjustment: %d samples (%.2f), mean SFO: %.2f Hz, %.5f samples/5-sf, ema=%f, length=%d\n", 
            q->next_rf_sample_offset, q->mean_sample_offset,
            srslte_ue_sl_sync_get_sfo(q), 
-           q->mean_sfo, q->sfo_ema, q->sample_offset_correct_period);    
+           q->mean_sfo, q->sfo_ema, q->sample_offset_correct_period);
     }
     q->mean_sample_offset = 0; 
   }
@@ -674,6 +676,13 @@ static int track_peak_ok(srslte_ue_sl_sync_t *q, uint32_t track_idx) {
   
   q->peak_idx = q->sf_len/2 + q->last_sample_offset;  
   q->frame_ok_cnt++;
+
+  // if(q->frame_no_cnt>0) {
+  //   printf("Reset q->frame_no_cnt %d\n", q->frame_no_cnt);
+  // }
+
+  // rest number of failed sync decodings
+  q->frame_no_cnt = 0;
   
   return 1;
 }
@@ -688,6 +697,8 @@ static int track_peak_no(srslte_ue_sl_sync_t *q) {
     return 0; 
   } else {
     INFO("Tracking peak not found. Peak %.3f, %d lost\n", 
+         srslte_sync_sl_get_peak_value(&q->strack), (int) q->frame_no_cnt);
+    printf("Tracking peak not found. Peak %.3f, %d lost\n", 
          srslte_sync_sl_get_peak_value(&q->strack), (int) q->frame_no_cnt);
     return 1;
   }
@@ -802,7 +813,8 @@ int srslte_ue_sl_sync_zerocopy_multi(srslte_ue_sl_sync_t *q, cf_t *input_buffer[
                                   (q->fft_size + SRSLTE_CP_LEN(q->fft_size, SRSLTE_CP_NORM_0_LEN) + SRSLTE_CP_LEN(q->fft_size, SRSLTE_CP_NORM_LEN));
               drop_samples = drop_samples % q->frame_len;
 
-              INFO("No space for SSS/CP detection. Realigning frame by %d samples...\n", drop_samples);
+              INFO("No space for SSSS/CP detection. Realigning frame by %d samples...\n", drop_samples);
+              printf("No space for SSSS/CP detection. Realigning frame by %d samples...\n", drop_samples);
 
               q->recv_callback(q->stream, dummy_offset_buffer, drop_samples, NULL); 
               srslte_sync_sl_reset(&q->sfind);
@@ -839,12 +851,13 @@ int srslte_ue_sl_sync_zerocopy_multi(srslte_ue_sl_sync_t *q, cf_t *input_buffer[
           /* Every SF idx 0 and 5, find peak around known position q->peak_idx */
           if (q->sf_idx == 0 || q->sf_idx == 5)
           {
-            // Process AGC every period
-            if (q->do_agc && (q->agc_period == 0 || 
-                             (q->agc_period && (q->frame_total_cnt%q->agc_period) == 0))) 
-            {
-              srslte_agc_process(&q->agc, input_buffer[0], q->sf_len);
-            }
+            // we need to update AGC when we are within our main loop
+            // // Process AGC every period
+            // if (q->do_agc && (q->agc_period == 0 || 
+            //                  (q->agc_period && (q->frame_total_cnt%q->agc_period) == 0))) 
+            // {
+            //   srslte_agc_process(&q->agc, input_buffer[0], q->sf_len);
+            // }
 
             /* Track PSS/SSS around the expected PSS position
              * In tracking phase, the subframe carrying the PSS is always the last one of the frame

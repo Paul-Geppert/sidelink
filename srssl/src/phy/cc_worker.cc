@@ -241,15 +241,19 @@ bool cc_worker::set_cell(srslte_cell_t cell)
 
 cf_t* cc_worker::get_rx_buffer(uint32_t antenna_idx)
 {
-  // @todo: shift buffer into cp
-  // by shifting our inputbuffer while receiving, we move our fft window into the CP
-  // return signal_buffer[antenna_idx] + SRSLTE_CP_LEN(srslte_symbol_sz(cell.nof_prb), SRSLTE_CP_NORM_LEN) / 8;
   return signal_buffer_rx[antenna_idx];
 }
 
 cf_t* cc_worker::get_tx_buffer(uint32_t antenna_idx)
 {
   return signal_buffer_tx[antenna_idx];
+}
+
+float cc_worker::get_last_agc()
+{
+  float ret = agc_max_value;
+  agc_max_value = 0.0;
+  return ret;
 }
 
 void cc_worker::set_tti(uint32_t tti)
@@ -334,10 +338,12 @@ bool cc_worker::decode_pscch_dl(srsue::mac_interface_phy_lte::mac_grant_dl_t* gr
 
   Debug("decode_pscch_dl TTI: %d t_SL: %d\n", tti, phy->ue_repo.subframe_rp[tti]);
 
+#ifndef USE_SENSING_SPS
   // early completion in case of this subframe is not in resource pool
   if(phy->ue_repo.subframe_rp[tti] == -1) {
     return false;
   }
+#endif
 
   uint8_t mdata[SRSLTE_SCI1_MAX_BITS + 16];
   uint16_t crc_rem = 0xdead;
@@ -372,13 +378,14 @@ bool cc_worker::decode_pscch_dl(srsue::mac_interface_phy_lte::mac_grant_dl_t* gr
       continue;
     }
 
-    printf("DECODED PSCCH  N_X_ID: %x on tti %d t_SL_k: %d (rbp:%d) SCI-1: frl: 0x%x(n: %d L: %d) gap: %d mcs: %d rti: %d\n",
+    printf("DECODED PSCCH  N_X_ID: %x on tti %d t_SL_k: %d (rbp:%d) SCI-1: frl: 0x%x(n: %d L: %d) rri: %d gap: %d mcs: %d rti: %d\n",
             crc_rem, tti,
             srslte_repo_get_t_SL_k(&phy->ue_repo, tti),
             rbp,
             sci.frl,
             sci.frl_n_subCH,
             sci.frl_L_subCH,
+            sci.resource_reservation,
             sci.time_gap,
             sci.mcs.idx,
             sci.rti);
@@ -410,19 +417,36 @@ bool cc_worker::decode_pscch_dl(srsue::mac_interface_phy_lte::mac_grant_dl_t* gr
     // grant->tb_cw_swap = false;
 
     // here we select which harq process should handle this tb
-    // todo: this may still be wrong, as i assume need at least 16 different processes
-    // grant->pid = (grant->tti + (8 - sci.rti * sci.time_gap)) % 8;
-    grant->pid = (phy->ue_repo.subframe_rp[tti] + (8 - sci.rti * sci.time_gap)) % 8;
+    // @todo in future we may decode multiple SCIs in a single TTI,
+    //       so the harq pid selection needs enhancing.
 
-    grant->sl_tti = phy->ue_repo.subframe_rp[tti];
-    grant->sl_gap = sci.time_gap;
-    
+#ifdef USE_SENSING_SPS
+    if (sci.rti==0) {
+      // 1st tx
+      grant->pid = (tti + sci.time_gap) % 8;
+    } else {
+      // retransmission
+      grant->pid = tti % 8;
+    }
+#else
+    // todo: this may still be wrong, as i assume need at least 16 different processes
+    grant->pid = (phy->ue_repo.subframe_rp[tti] + (8 - sci.rti * sci.time_gap)) % 8;
+#endif
 
     grant->tb[0].tbs = sci.mcs.tbs / (uint32_t) 8;
     grant->rnti = SRSLTE_RNTI_SL_PLACEHOLDER;
-    // here we also need to select the correct rv value
-    grant->tb[0].rv = (sci.rti == 0) ? 0 : 2;
 
+    // here we also need to select the correct rv value
+    // Use ndi flag to tell dl_harq if this is a retransmission
+    if (sci.rti==0) {
+      grant->tb[0].rv = 0;
+      grant->tb[0].ndi_present = true;
+      grant->tb[0].ndi = true;
+    } else {
+       grant->tb[0].rv = 2;
+      grant->tb[0].ndi_present = true;
+      grant->tb[0].ndi = false;
+    }
 
     // char hexstr[512];
     // hexstr[0]='\0';
@@ -520,7 +544,7 @@ int cc_worker::decode_pssch(srslte_ra_sl_sci_t *grant, uint8_t *payload[SRSLTE_M
           cf_t *_ce[SRSLTE_MAX_PORTS][SRSLTE_MAX_PORTS];
 
           _sf_symbols[0] = q->sf_symbols; 
-          for (int i=0;i<q->pscch.cell.nof_ports;i++) {
+          for (unsigned int i=0;i<q->pscch.cell.nof_ports;i++) {
             _ce[i][0] = ce[i]; 
           }
 
@@ -623,11 +647,25 @@ bool cc_worker::work_sl_rx()
   mac_interface_phy_lte::tb_action_dl_t dl_action;
 
   uint32_t tti = sf_cfg_dl.tti;
+  float rssi_sps = 0.0f;
+
+  last_decoding_successful_high_rsrp = false;
 
   /* Run FFT for the slot symbols */
   srslte_ofdm_rx_sf(&ue_sl.fft);
 
+  // reset agc value
+  this->agc_max_value = 0.0;
+
+  // update max value for agc calculations
+  float* t = (float*) ue_sl.fft.in_buffer; 
+  this->agc_max_value = t[srslte_vec_max_fi(t, 2*ue_sl.fft.sf_sz)];// take only positive max to avoid abs() (should be similar)
+
+  /* Initialise the SPS algorithm for this tti */
+  phy->sensing_sps->tick(tti);
+
   /* calculate S-RSSI for SPS */
+  if (!phy->sensing_sps->getTransmit(tti))
   {
     // uint8_t L_subch       = 1; // phy->ue_repo.rp.numSubchannel_r14
     uint8_t n_subCH_start = 0;
@@ -653,7 +691,7 @@ bool cc_worker::work_sl_rx()
     // std::cout << "Time taken by srslte_pssch_get_for_sps_rssi is : " << time_taken << setprecision(9) << " sec" << endl;
 
     // clock_gettime(CLOCK_MONOTONIC, &start);
-    float rssi_sps =
+    rssi_sps =
         // srslte_vec_avg_power_cf(ue_sl.pssch.SymSPSRssi[SRSLTE_MAX_PORTS], SRSLTE_SF_LEN_PRB(cell.nof_prb));
         srslte_vec_avg_power_cf(ue_sl.pssch.SymSPSRssi[0],
                                 // L_subch * phy->ue_repo.rp.sizeSubchannel_r14 * n_re_pssch_rssi); 
@@ -669,12 +707,37 @@ bool cc_worker::work_sl_rx()
     phy->inst_sps_rssi[sps_rssi_read_cnt]   = 10 * log10(rssi_sps * 1000); // in dBm.
     // phy->inst_sps_rssi = 10 * log10(rssi_sps * 1000); // in dBm.
 
+
+    // if( phy->inst_sps_rssi[sps_rssi_read_cnt] - phy->sl_rssi > 15) {
+    //   printf("TTI: %4d detected large RSSI value of %f (avg: %f)\n", tti, phy->inst_sps_rssi[sps_rssi_read_cnt], phy->sl_rssi);
+    //   last_decoding_successful_high_rsrp = true;
+    // }
+
+    // save average RSSI
+    phy->sl_rssi = SRSLTE_VEC_EMA(phy->inst_sps_rssi[sps_rssi_read_cnt], phy->sl_rssi, 0.1);
+
     sps_rssi_read_cnt++;
     if (sps_rssi_read_cnt == 1000)
       sps_rssi_read_cnt = 0;
 
-  }
+    phy->sensing_sps->addAverageSRSSI(tti,10 * log10(rssi_sps * 1000));
 
+    // for sensing-based SPS we need to measure the S-RSSI per subchannel
+    // Note that this reuses the SymSPSRssi buffer
+    uint32_t n_re_pscch_subchannel = phy->ue_repo.rp.sizeSubchannel_r14 * SRSLTE_NRE * n_re_pssch_rssi;
+
+    for (int rbp = 0; rbp < phy->ue_repo.rp.numSubchannel_r14; ++rbp) {
+      srslte_pssch_get_for_sps_rssi(ue_sl.sf_symbols,
+                                    ue_sl.pssch.SymSPSRssi[0],
+                                    ue_sl.pssch.cell,
+                                    phy->ue_repo.rp.startRB_Subchannel_r14 + rbp * phy->ue_repo.rp.sizeSubchannel_r14,
+                                    phy->ue_repo.rp.sizeSubchannel_r14);
+
+      float rssi = srslte_vec_avg_power_cf(ue_sl.pssch.SymSPSRssi[0], n_re_pscch_subchannel);
+
+      phy->sensing_sps->addChannelSRSSI(tti, rbp, 10 * log10(rssi * 1000));
+    }
+  }
 
   // in each sync symbol we also decode mib
   if(!phy->args->sidelink_master && (tti%5 == 0)) {
@@ -685,15 +748,11 @@ bool cc_worker::work_sl_rx()
     }
 
     // calculate snr psbch
-    float snr = 10*log10(ue_sl.chest.pilot_power / ue_sl.chest.noise_estimate);
+    float snr = srslte_chest_sl_get_snr_db(&ue_sl.chest);
     float rsrp = 10*log10(ue_sl.chest.pilot_power) + 30;
 
     phy->snr_psbch = SRSLTE_VEC_EMA(snr, phy->snr_psbch, 0.1);
     phy->rsrp_psbch = SRSLTE_VEC_EMA(rsrp, phy->rsrp_psbch, 0.1);
-
-    if(phy->rsrp_psbch > 40.0) {
-      printf("We have high RSRP values(%f) in PSBCH, maybe reduce receiver gain.\n", phy->rsrp_psbch);
-    }
 
     uint8_t bch_payload[SRSLTE_SL_BCH_PAYLOAD_LEN];
     /* Decode PSBCH */
@@ -719,24 +778,42 @@ bool cc_worker::work_sl_rx()
       printf("MIB not decoded: %u in phch worker\n", ue_sl.frame_cnt);
       ue_sl.frame_cnt++;
     }
+  } else {
+    // report large RSSI values, except for broadcast subframes
+    if( 10 * log10(rssi_sps * 1000) - phy->sl_rssi > 15) {
+      printf("TTI: %4d detected large RSSI value of %f (avg: %f)\n", tti, 10 * log10(rssi_sps * 1000), phy->sl_rssi);
+      last_decoding_successful_high_rsrp = true;
+    }
   }
 
+  int t_SL_k = srslte_repo_get_t_SL_k(&phy->ue_repo, tti);
+
+  // do not decode our own sent messages
+  if (phy->sensing_sps->getTransmit(tti)) {
+    // exclude subframe from agc measurement
+    this->agc_max_value = 0.0;
+
+    // early return
+    return true;
+  }
+
+  #ifndef USE_SENSING_SPS
+  // stop processing in case this subframe is not in resource pool
+  if (t_SL_k < 0) {
+    return true;
+  }
+  #endif
 
   mac_interface_phy_lte::mac_grant_dl_t dl_mac_grant = {};
 
-  bool dl_grant_available = decode_pscch_dl(&dl_mac_grant); 
+  memset(&pending_sl_grant[0], 0x00, sizeof(pending_sl_grant[0]));
 
   last_decoding_successful = false;
-  last_decoding_successful_high_rsrp = false;
 
 #if 1
   // do not decode our own sent messages
-  if(dl_grant_available && ((srslte_repo_get_t_SL_k(&phy->ue_repo, tti) % 5) == phy->args->sidelink_id)) {
-    dl_grant_available = false;
-  }
+  if(!phy->sensing_sps->getTransmit(tti) && decode_pscch_dl(&dl_mac_grant)) {
 
-  if(dl_grant_available) {
-    //printf("dl_grant_available %d\n", my_id);
     /* Send grant to MAC and get action for this TB */
     phy->stack->new_grant_dl(cc_idx, dl_mac_grant, &dl_action);
 
@@ -746,28 +823,26 @@ bool cc_worker::work_sl_rx()
       // indicate, that we can dump this subframe
       last_decoding_successful = true;
       
-      // make space for snr insertion
-      dl_action.tb[0].payload += sizeof(float);
-
       decode_pssch(&pending_sl_grant[0].sl_dci, &dl_action.tb[0].payload,
                     &dl_action.tb[0].softbuffer.rx, &dl_action.tb[0].rv, dl_mac_grant.rnti,
                     dl_mac_grant.pid, dl_ack);
       
       // calculate snr for possibly decoded pssch
-      float snr = 10*log10(ue_sl.chest.pilot_power / ue_sl.chest.noise_estimate);
+      float snr = srslte_chest_sl_get_snr_db(&ue_sl.chest);
       float rsrp = 10*log10(ue_sl.chest.pilot_power) + 30;
-
-      if(rsrp > 50.0) {
-        last_decoding_successful_high_rsrp = true;
-      }
 
       // following values are dumped into PCAP
       dl_mac_grant.sl_lte_tti = tti;
       dl_mac_grant.sl_snr = snr;
       dl_mac_grant.sl_rsrp = rsrp;
-      dl_mac_grant.sl_rssi = phy->inst_sps_rssi[(sps_rssi_read_cnt+999) % 1000];
+      dl_mac_grant.sl_rssi = rssi_sps;
 
       int ue_id = srslte_repo_get_t_SL_k(&phy->ue_repo, tti % 10240);
+
+      #ifdef USE_SENSING_SPS
+      // in SPS mode we can not say which UE sent us data, so we always tell it is 0
+      ue_id = 0;
+      #endif
 
       if(ue_id < 0) {
         // this should not happen
@@ -812,19 +887,56 @@ bool cc_worker::work_sl_rx()
         phy->inst_sps_rsrp[sps_rsrp_read_cnt] = 10 * log10(rsrp_sps * 1000); // in dBm.
         // phy->inst_sps_rsrp = 10 * log10(rsrp_sps * 1000); // in dBm.
 
+        // Warning: we are currently only decoding a single PSSCH per subframe
+        //          and are calculating the RSRP across all the channels
+        phy->sensing_sps->addSCI(tti,
+                            pending_sl_grant[0].sl_dci.frl_n_subCH,
+                            pending_sl_grant[0].sl_dci.frl_L_subCH,
+                            pending_sl_grant[0].sl_dci.resource_reservation,
+                            pending_sl_grant[0].sl_dci.priority,
+                            10 * log10(rsrp_sps * 1000)
+        );
+
+
+#if 0
+printf("dumping subframe subframe..\n");
+  for (int i=0;i<8400;++i) {
+      cf_t c = ue_sl.sf_symbols[i];
+      printf(" %f%+fj",crealf(c),cimagf(c));
+}
+#endif
+
         sps_rsrp_read_cnt++;
         if (sps_rsrp_read_cnt == 1000)
           sps_rsrp_read_cnt = 0;
       }
 
-      // reset pointer and prepend SNR value
-      dl_action.tb[0].payload -= sizeof(float);
-      *((float *)dl_action.tb[0].payload) = snr;//ue_sl.chest.noise_estimate;
+      // append SNR value after payload, the mac knows about it and will read it from there to attach it to each TCP terminated sl packet
+      *((float *)(dl_action.tb[0].payload + dl_mac_grant.tb[0].tbs)) = phy->snr_pssch_per_ue[ue_id];//snr;//ue_sl.chest.noise_estimate;
+
+#ifdef ENABLE_GUI
+      // save ce for psxch for plotting
+      bzero(ue_sl.ce_plot, SRSLTE_NRE * cell.nof_prb * sizeof(cf_t));// (pending_sl_grant[0].sl_dci.frl_L_subCH * phy->ue_repo.rp.sizeSubchannel_r14) * sizeof(cf_t));
+      memcpy(&ue_sl.ce_plot[SRSLTE_NRE * (pending_sl_grant[0].sl_dci.frl_n_subCH * phy->ue_repo.rp.sizeSubchannel_r14)],
+              &ue_sl.ce[SRSLTE_NRE * (2*cell.nof_prb + pending_sl_grant[0].sl_dci.frl_n_subCH * phy->ue_repo.rp.sizeSubchannel_r14)],
+              SRSLTE_NRE * (pending_sl_grant[0].sl_dci.frl_L_subCH * phy->ue_repo.rp.sizeSubchannel_r14) * sizeof(cf_t));
+
+      memcpy(ue_sl.td_plot, ue_sl.fft.in_buffer, ue_sl.fft.sf_sz * sizeof(cf_t));
+#endif
+      
     }
-    
+
     phy->stack->tb_decoded(cc_idx, dl_mac_grant, dl_ack);//[0], 0, dl_mac_grant.rnti_type, dl_mac_grant.pid);
   }
+
+#if 0
+  /* Generate some Dummy SCIs / RSSI measurements */
+  phy->sensing_sps->dummyRx(tti);
 #endif
+
+
+#endif
+
   return true;
 }
 
@@ -836,7 +948,7 @@ bool cc_worker::dump_subframe() {
 
     char filename [30];
 
-    snprintf(filename, sizeof(filename), "iq_dump_%d.%ld.bin", t.tv_sec, t.tv_usec);
+    snprintf(filename, sizeof(filename), "iq_dump_%ld.%ld.bin", t.tv_sec, t.tv_usec);
 
     srslte_filesink_t fsink;
     srslte_filesink_init(&fsink, filename, SRSLTE_COMPLEX_FLOAT_BIN);
@@ -852,7 +964,7 @@ bool cc_worker::dump_subframe() {
 
     char filename [30];
 
-    snprintf(filename, sizeof(filename), "iq_hr_dump_%d.%ld.bin", t.tv_sec, t.tv_usec);
+    snprintf(filename, sizeof(filename), "iq_hr_dump_%ld.%ld.bin", t.tv_sec, t.tv_usec);
 
     srslte_filesink_t fsink;
     srslte_filesink_init(&fsink, filename, SRSLTE_COMPLEX_FLOAT_BIN);
@@ -862,6 +974,7 @@ bool cc_worker::dump_subframe() {
     phy->n_subframes_to_dump_special--;
   }
   
+  return true;
 }
 
 
@@ -874,11 +987,11 @@ bool cc_worker::work_sl_tx() {
   ZERO_OBJECT(ul_mac_grant);
   ZERO_OBJECT(ul_action);
 
-  // this is the dl tti
-  int tti = sf_cfg_dl.tti;
+  // this is the ul tti
+  int tti = sf_cfg_ul.tti;
 
   // we are the master node and need to send sync sequences
-  if(phy->args->sidelink_master && ((TTI_TX(tti) % phy->ue_repo.syncPeriod) == phy->ue_repo.syncOffsetIndicator_r12)) {
+  if(phy->args->sidelink_master && ((tti % phy->ue_repo.syncPeriod) == phy->ue_repo.syncOffsetIndicator_r12)) {
 
     // clear sf buffer
     bzero(ue_sl_tx.sf_symbols, sizeof(cf_t)*SRSLTE_SF_LEN_RE(ue_sl_tx.cell.nof_prb, ue_sl_tx.cell.cp));
@@ -888,8 +1001,8 @@ bool cc_worker::work_sl_tx() {
     srslte_refsignal_sl_dmrs_psbch_put(&ue_sl_tx.signals, SRSLTE_SL_MODE_4, ue_sl_tx.psbch_dmrs, ue_sl_tx.sf_symbols);
 
     srslte_psbch_mib_pack(&cell,
-                          (TTI_TX(tti) % 10240)/10, //sfn,
-                          TTI_TX(tti) % 10,//sf_idx,
+                          (tti % 10240)/10, //sfn,
+                          tti % 10,//sf_idx,
                           ue_sl_tx.bch_payload);
 
     cf_t *sf_tmp[2];
@@ -902,20 +1015,72 @@ bool cc_worker::work_sl_tx() {
 
     signal_ready = true;
 
+    phy->sensing_sps->setTransmit(tti,signal_ready);
+
     // we can already return, as sync signals are exclusive in a subframe
     return signal_ready;
   }
 
+  // 2 modes of operation currently -
+  // Either using the bitmap from the repo pool and the sidelink_id,
+  // Or a basic implementation of Sensing SPS.
 
+  srslte_ra_sl_sci_t sci;
+  uint8_t            L_subch       = 1;
+  uint8_t            n_subCH_start = 0;
+  int t_SL_k = -1;
 
-  int t_SL_k = srslte_repo_get_t_SL_k(&phy->ue_repo, TTI_TX(tti) % 10240);
+#ifdef USE_SENSING_SPS
+  // Call Sensing SPS algorithm to get us the resources to transmit on
+  // @todo this MUST generate a valid number of PRBs..
+  srslte::ReservationResource* resource = phy->sensing_sps->schedule(tti,1); // @todo for now we always say we have data to send
 
-  // determine it next transmit tti belongs to ressource pool and we are statically assigned to it
+  if (resource) {
+    uint32_t sl_gap = resource->sl_gap;
+    uint32_t num_harq_proc = 8;
+
+    sci.rti = (resource->is_retx) ? 1 : 0;
+
+    ul_mac_grant.rnti = SRSLTE_RNTI_SL_RANDOM;
+
+    // Select the harq process we will use
+    ul_mac_grant.tb.ndi_present = true;
+    if (sci.rti==0) {
+      // new transmission
+      ul_mac_grant.pid = ((tti + sl_gap) % 10240 ) % num_harq_proc;
+      ul_mac_grant.tb.ndi = true;
+      sci.resource_reservation = resource->rsvp;
+      sci.time_gap = sl_gap;
+    } else {
+      // retransmission
+      ul_mac_grant.pid = tti % num_harq_proc;
+      ul_mac_grant.tb.ndi = false;
+      sci.resource_reservation = resource->rsvp;
+      sci.time_gap = 0;
+    }
+    
+    sci.priority = 0; // @todo
+
+    L_subch = resource->numSubchannels; // @todo must result in valid number of prbs srslte_dft_precoding_valid_prb()
+    n_subCH_start = resource->subchannelStart;
+
+    int n_prb = L_subch*phy->ue_repo.rp.sizeSubchannel_r14 - 2;
+    // make mcs adjustable via REST @todo: is this fixed for a SPS interval
+    sci.mcs.idx = phy->pssch_fixed_i_mcs;
+    srslte_sl_fill_ra_mcs(&sci.mcs, n_prb);
+
+    // mac creates a packet that has exactly this size
+    ul_mac_grant.tb.tbs = sci.mcs.tbs/8;
+
+    // get mac pdu
+    phy->stack->new_grant_ul(0, ul_mac_grant, &ul_action);
+  }
+#else
+  t_SL_k = srslte_repo_get_t_SL_k(&phy->ue_repo,tti % 10240);
+
+  // determine if next transmit tti belongs to resource pool and we are statically assigned to it
+  // note that ul_harq selects the harq pid in this case
   if(t_SL_k >0 && phy->args->sidelink_id == (t_SL_k%5)) {
-  //if(0){
-
-    /* Check if we have UL grant. ul_phy_grant will be overwritten by new grant */
-    // ul_grant_available = decode_pdcch_ul(&ul_mac_grant);
 
     ul_mac_grant.rnti = SRSLTE_RNTI_SL_RANDOM;
     ul_mac_grant.sl_tti = t_SL_k;//tti;
@@ -924,7 +1089,6 @@ bool cc_worker::work_sl_tx() {
     ul_mac_grant.sl_gap = 5;
 
     // find a suitable tbs and mcs level
-    srslte_ra_sl_sci_t sci;
     sci.priority = 0;
     sci.resource_reservation = 0;
 
@@ -932,11 +1096,12 @@ bool cc_worker::work_sl_tx() {
 
     sci.mcs.idx = phy->pssch_fixed_i_mcs;
 
-    uint8_t L_subch = 1;
-    uint8_t n_subCH_start = 0;
+    uint8_t last_valid_l_subch = 0;
 
     // get valid prb sizes by checking all subchannel sizes
-    for(L_subch = 1; L_subch <= phy->ue_repo.rp.numSubchannel_r14; L_subch++) {
+    // @todo: we still need too handle the case, when we do not find a config to fulfill the tbs requirement
+    while(L_subch < phy->ue_repo.rp.numSubchannel_r14) {
+      L_subch++;
       int n_prb = L_subch * phy->ue_repo.rp.sizeSubchannel_r14 - 2;
 
       // check if number of prb fullfills 2^a2*3^a3*5^a5, see14.1.1.4C
@@ -945,11 +1110,15 @@ bool cc_worker::work_sl_tx() {
       }
 
       srslte_sl_fill_ra_mcs(&sci.mcs, n_prb);
+      last_valid_l_subch = L_subch;
 
       if(phy->pssch_min_tbs <= sci.mcs.tbs) {
         break;
       }
     }
+
+    // if last config was not valid
+    L_subch = last_valid_l_subch;
 
     // mac creates a packet that has exactly this size
     ul_mac_grant.tb.tbs = sci.mcs.tbs/8;
@@ -959,7 +1128,10 @@ bool cc_worker::work_sl_tx() {
 
     // /* Set UL CFO before transmission */
     // srslte_ue_ul_set_cfo(&ue_ul, cfo);
+  }
+#endif
 
+  {
     if(ul_action.tb.payload)
     {
       // fill in required values for sci
@@ -987,17 +1159,16 @@ bool cc_worker::work_sl_tx() {
 
       srslte_repo_sci_encode(&phy->ue_repo, sci_buffer, &sci);
 
-      printf("TTI: %d t_SL_k: %d ENCODED SCI-1: prio: %d rr: 0x%x frl(%d): 0x%x gap: %d mcs: %d rti: %d\n",
+      printf("TTI: %d t_SL_k: %d ENCODED SCI-1: prio: %d frl(%d): 0x%x rri: %d gap: %d mcs: %d rti: %d\n",
               tti,
               t_SL_k,
               sci.priority,
-              sci.resource_reservation,
               srslte_repo_frl_len(&phy->ue_repo),
               sci.frl,
+              sci.resource_reservation,
               sci.time_gap,
               sci.mcs.idx,
               sci.rti);
-
 
       cf_t *ta[2];
       ta[0] = ue_sl_tx.sf_symbols;
@@ -1067,10 +1238,14 @@ bool cc_worker::work_sl_tx() {
         srslte_cfo_correct(&ue_sl_tx.cfo, ue_sl_tx.out_buffer, ue_sl_tx.out_buffer, ue_ul_cfg.cfo_value / srslte_symbol_sz(ue_sl_tx.cell.nof_prb));
       }
 
+      srslte_ue_sl_tx_apply_norm(&ue_sl_tx, L_subch*phy->ue_repo.rp.sizeSubchannel_r14);
+
       signal_ready = true;
       // signal_ptr = signal_buffer[0];
     }
   }
+
+  phy->sensing_sps->setTransmit(tti,signal_ready);
 
   return signal_ready;
 }
@@ -2233,12 +2408,20 @@ int cc_worker::read_ce_abs(float* ce_abs, uint32_t tx_antenna, uint32_t rx_anten
   bzero(ce_abs, sizeof(float) * sz);
   int g = (sz - 12 * cell.nof_prb) / 2;
   for (i = 0; i < 12 * cell.nof_prb; i++) {
-    ce_abs[g + i] = 20 * log10f(std::abs(std::complex<float>(ue_dl.chest_res.ce[tx_antenna][rx_antenna][i])));
+    ce_abs[g + i] = 20 * log10f(std::abs(std::complex<float>(ue_sl.ce_plot[i])));
     if (std::isinf(ce_abs[g + i])) {
       ce_abs[g + i] = -80;
     }
   }
   return sz;
+}
+
+cf_t* cc_worker::read_td_samples(uint32_t* n_samples)
+{
+  if (n_samples) {
+    *n_samples = ue_sl.fft.sf_sz;
+  }
+  return ue_sl.td_plot;
 }
 
 int cc_worker::read_pdsch_d(cf_t* pdsch_d)
@@ -2247,4 +2430,11 @@ int cc_worker::read_pdsch_d(cf_t* pdsch_d)
   return ue_dl_cfg.cfg.pdsch.grant.nof_re;
 }
 
+int cc_worker::read_pssch_d(cf_t* pssch_d)
+{
+  uint32_t nof_re = pending_sl_grant[0].sl_dci.frl_L_subCH > 0 ? 12*9*(pending_sl_grant[0].sl_dci.frl_L_subCH * phy->ue_repo.rp.sizeSubchannel_r14 - 2) : 0;
+  memcpy(pssch_d, ue_sl.pssch.d[0], nof_re * sizeof(cf_t));
+  
+  return nof_re;
+}
 } // namespace srsue

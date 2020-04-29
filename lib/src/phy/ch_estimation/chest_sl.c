@@ -436,6 +436,7 @@ int srslte_chest_sl_estimate_psbch(srslte_chest_sl_t *q, cf_t *input, cf_t *ce, 
   srslte_vec_prod_conj_ccc(q->pilot_recv_signal, q->pilot_known_signal, q->pilot_estimates, nrefs_sf);
 
   float power = 0;
+  float est_power = 0.0;
 
   // generate channel estimates for the whole subframe
   if (ce != NULL) {
@@ -456,6 +457,10 @@ int srslte_chest_sl_estimate_psbch(srslte_chest_sl_t *q, cf_t *input, cf_t *ce, 
                       &ce[SRSLTE_RE_IDX(q->cell.nof_prb, dmrs_pos+ns*nsymbols, q->cell.nof_prb*SRSLTE_NRE/2 - 36)],
                       q->tmp_noise, 
                       nof_prb_psbch*SRSLTE_NRE);
+
+          // get power of averaged ce
+          est_power += srslte_vec_avg_power_cf(&ce[SRSLTE_RE_IDX(q->cell.nof_prb, dmrs_pos+ns*nsymbols, q->cell.nof_prb*SRSLTE_NRE/2 - 36)], nof_prb_psbch*SRSLTE_NRE);
+
           dmrs_c++;
         }
       }
@@ -466,6 +471,7 @@ int srslte_chest_sl_estimate_psbch(srslte_chest_sl_t *q, cf_t *input, cf_t *ce, 
       //q->noise_estimate = estimate_noise_pilots(q, ce, nrefs_sym, n_prb);
 
       q->noise_estimate = power/dmrs_c;
+      q->ce_power_estimate = est_power/dmrs_c;
     } else {
 
       // Copy estimates to CE vector without averaging
@@ -505,6 +511,12 @@ float srslte_chest_sl_get_snr(srslte_chest_sl_t *q) {
   return q->pilot_power/srslte_chest_sl_get_noise_estimate(q);
 }
 
+float srslte_chest_sl_get_snr_db(srslte_chest_sl_t *q) {
+  // we have two different methods to estimate the SNR and the currently used
+  // one, shows empirically the best result
+  // 10*log10((q->chest.pilot_power - q->noise_estimate) / q->noise_estimate)
+  return 10*log10(q->ce_power_estimate / q->noise_estimate);
+}
 
 int srslte_chest_sl_estimate_psxch(srslte_chest_sl_t *q, cf_t *input, cf_t *ce, srslte_sl_mode_t sl_mode,
                                     uint32_t prb_offset,
@@ -539,6 +551,7 @@ int srslte_chest_sl_estimate_psxch(srslte_chest_sl_t *q, cf_t *input, cf_t *ce, 
   srslte_vec_prod_conj_ccc(q->pilot_recv_signal, q->pilot_known_signal, q->pilot_estimates, nrefs_sf);
 
   float power = 0;
+  float est_power = 0.0;
 
   // generate channel estimates for the whole subframe
   if (ce != NULL) {
@@ -560,6 +573,9 @@ int srslte_chest_sl_estimate_psxch(srslte_chest_sl_t *q, cf_t *input, cf_t *ce, 
                       q->tmp_noise, 
                       prb_n*SRSLTE_NRE);
 
+          // get power of averaged ce
+          est_power += srslte_vec_avg_power_cf(&ce[SRSLTE_RE_IDX(q->cell.nof_prb, dmrs_pos+ns*nsymbols, prb_offset*SRSLTE_NRE)], prb_n*SRSLTE_NRE);
+
           dmrs_c++;
         }
       }
@@ -567,7 +583,8 @@ int srslte_chest_sl_estimate_psxch(srslte_chest_sl_t *q, cf_t *input, cf_t *ce, 
       interpolate_pilots_psxch_mode4(q, ce, prb_offset, nrefs_sym);
 
       q->noise_estimate = power/dmrs_c;
-      
+
+      q->ce_power_estimate = est_power/dmrs_c;
     } else {
 
       // Copy estimates to CE vector without averaging

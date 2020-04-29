@@ -84,7 +84,7 @@ char *output_file_name = NULL;
 #define DOWN_KEY  66
 
 srslte_cell_t cell = {
-  25,               // nof_prb
+  50,               // nof_prb
   1,                // nof_ports
   301,                // cell_id
   SRSLTE_CP_NORM,   // cyclic prefix
@@ -119,7 +119,7 @@ SL_CommResourcePoolV2X_r14 respool = {
 // SLOffsetIndicatorSync-r12: Synchronisation resources are present in those SFN and subframes which satisfy the relation: (SFN*10+ Subframe Number) mod 40 = SLOffsetIndicatorSync
 uint32_t syncOffsetIndicator_r12 = 0;
 
-
+uint32_t n_prb_pssch = 0;
 
 
 uint16_t c = -1;
@@ -203,6 +203,7 @@ void usage(char *prog) {
   printf("\t-n number of frames [Default %d]\n", nof_frames);
   printf("\t-c cell id [Default %d]\n", cell.id);
   printf("\t-p nof_prb [Default %d]\n", cell.nof_prb);
+  printf("\t-P nof_prb for PSSCH [Default %d]\n", n_prb_pssch);
   printf("\t-M MBSFN area id [Default %d]\n", mbsfn_area_id);
   printf("\t-x Transmission mode [1-4] [Default %d]\n", transmission_mode + 1);
   printf("\t-b Precoding Matrix Index (multiplex mode only)* [Default %d]\n", multiplex_pmi);
@@ -216,7 +217,7 @@ void usage(char *prog) {
 
 void parse_args(int argc, char **argv) {
   int opt;
-  while ((opt = getopt(argc, argv, "aglfmoncpvutxbwMs")) != -1) {
+  while ((opt = getopt(argc, argv, "aglfmoncpvutxbwMsP")) != -1) {
 
     switch (opt) {
     case 'a':
@@ -245,6 +246,9 @@ void parse_args(int argc, char **argv) {
       break;
     case 'p':
       cell.nof_prb = atoi(argv[optind]);
+      break;
+    case 'P':
+      n_prb_pssch = atoi(argv[optind]);
       break;
     case 'c':
       cell.id = atoi(argv[optind]);
@@ -802,6 +806,8 @@ int main(int argc, char **argv) {
   //srslte_refsignal_t csr_refs;
   // srslte_refsignal_t mbsfn_refs;
 
+  // srslte_use_standard_symbol_size(true);
+
   parse_args(argc, argv);
 
   srslte_refsignal_ul_t refs;
@@ -1013,27 +1019,46 @@ int main(int argc, char **argv) {
         uint8_t L_subch = 10;//1;
         uint8_t n_subCH_start = 0;
 
-        // get valid prb sizes by checking all subchannel sizes
-        for(L_subch = 1; L_subch<=repo.rp.numSubchannel_r14; L_subch++) {
-          int n_prb = L_subch*repo.rp.sizeSubchannel_r14 - 2;
+        if(n_prb_pssch > 0) {
+          // this section is used to simulate the clipping on transmit signals
+          // it will break decoding capability as we change the resource pool configuration
 
-          // check if number of prb fullfills 2^a2*3^a3*5^a5, see14.1.1.4C
-          if(!srslte_dft_precoding_valid_prb(n_prb)) {
-            continue;
-          }
+          L_subch = n_prb_pssch + 2;
+          repo.rp.sizeSubchannel_r14 = 1;
+          repo.rp.numSubchannel_r14 = 50;
 
-          for(int mcs=0; mcs<12; mcs++) {
-            sci.mcs.idx = mcs;
-            srslte_sl_fill_ra_mcs(&sci.mcs, n_prb);
+          sci.mcs.idx = 8;
+          srslte_sl_fill_ra_mcs(&sci.mcs, n_prb_pssch);
 
-            if(sci.mcs.tbs >= sdu_size) {
-              found_mcs = true;
+          found_mcs = true;
+
+          net_packet_bytes = sci.mcs.tbs/8;
+          
+        } else {
+
+
+          // get valid prb sizes by checking all subchannel sizes
+          for(L_subch = 1; L_subch<=repo.rp.numSubchannel_r14; L_subch++) {
+            int n_prb = L_subch*repo.rp.sizeSubchannel_r14 - 2;
+
+            // check if number of prb fullfills 2^a2*3^a3*5^a5, see14.1.1.4C
+            if(!srslte_dft_precoding_valid_prb(n_prb)) {
+              continue;
+            }
+
+            for(int mcs=0; mcs<12; mcs++) {
+              sci.mcs.idx = mcs;
+              srslte_sl_fill_ra_mcs(&sci.mcs, n_prb);
+
+              if(sci.mcs.tbs >= sdu_size) {
+                found_mcs = true;
+                break;
+              }
+            }
+
+            if(found_mcs) {
               break;
             }
-          }
-
-          if(found_mcs) {
-            break;
           }
         }
 
@@ -1269,6 +1294,25 @@ int main(int argc, char **argv) {
       }
       #endif
 
+      #if 0
+      // add noise in f-domain
+      float scaling = 1.0;
+      float snr = 10.0;
+      float std_dev = powf(10, - (snr + 3.0f) / 20.0f) * scaling;
+
+      cf_t* noise = srslte_vec_malloc(sizeof(cf_t) * sf_n_re);
+      if (!noise) {
+        perror("malloc");
+        exit(-1);
+      }
+      bzero(noise, sizeof(cf_t) * sf_n_re);
+
+      srslte_ch_awgn_c(noise, noise, std_dev, sf_n_re);
+
+      srslte_vec_sub_ccc(sf_symbols[0], noise, sf_symbols[0], sf_n_re);
+      #endif
+
+
       /* Transform to OFDM symbols */
       if(sf_idx != 1 || mbsfn_area_id < 0){
         for (i = 0; i < cell.nof_ports; i++) {
@@ -1293,7 +1337,6 @@ int main(int argc, char **argv) {
         usleep(1000);
       } else {
 // #ifndef DISABLE_RF
-//       // @todo: (rl) do we also need a norm_factor for sidelink
 //       // float norm_factor = (float) cell.nof_prb/15/sqrtf(pdsch_cfg.grant.nof_prb);
 //       // for (i = 0; i < cell.nof_ports; i++) {
 //       //   srslte_vec_sc_prod_cfc(output_buffer[i], rf_amp * norm_factor, output_buffer[i], SRSLTE_SF_LEN_PRB(cell.nof_prb));

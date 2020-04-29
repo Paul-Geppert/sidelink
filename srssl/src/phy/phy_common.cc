@@ -129,6 +129,28 @@ phy_common::phy_common(uint32_t max_workers) : tx_sem(max_workers)
 
   sib13_configured = false;
   mcch_configured  = false;
+
+  // @todo define the SL_CommTxPoolSensingConfig_r14 somewhere else...
+  static SL_CommTxPoolSensingConfig_r14 sL_CommTxPoolSensingConfig_r14 = {
+      .thresPSSCH_RSRP_List_r14 =
+          {
+              -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, // prioTx=0, prioRx=0..7 in dBm
+              -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, // prioTx=1, prioRx=0..7 in dBm
+              -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, // prioTx=2, prioRx=0..7 in dBm
+              -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, // prioTx=3, prioRx=0..7 in dBm
+              -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, // prioTx=4, prioRx=0..7 in dBm
+              -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, // prioTx=5, prioRx=0..7 in dBm
+              -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, // prioTx=6, prioRx=0..7 in dBm
+              -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, -10.0, // prioTx=7, prioRx=0..7 in dBm
+          },
+      .restrictResourceReservationPeriod_r14 = {1.0},
+      .probResourceKeep_r14                  = 0.5,
+      .sl_ReselectAfter_r14                  = 1};
+
+  sensing_sps = new srslte::SensingSPS(&ue_repo.rp,
+                                       &sL_CommTxPoolSensingConfig_r14,
+                                       1000); // sensingWindowSize
+
 }
 
 phy_common::~phy_common()

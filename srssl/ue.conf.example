@@ -35,8 +35,7 @@
 dl_freq = 2350e6
 ul_freq = 2350e6
 freq_offset = 0
-tx_gain = 80
-rx_gain = 30
+tx_gain = 60
 
 #nof_radios = 1
 #nof_rx_ant = 1

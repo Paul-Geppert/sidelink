@@ -84,6 +84,11 @@ public:
   int read_ce_abs(float* ce_abs, uint32_t tx_antenna, uint32_t rx_antenna);
   int read_pdsch_d(cf_t* pdsch_d);
 
+  int read_pssch_d(cf_t* pdsch_d);
+
+  cf_t* read_td_samples(uint32_t* n_samples);
+  float get_last_agc();
+
   void update_measurements();
   bool dump_subframe();
 
@@ -177,6 +182,7 @@ private:
   static uint32_t sps_rssi_read_cnt;
   bool last_decoding_successful;
   bool last_decoding_successful_high_rsrp;
+  float agc_max_value;
 
   // Metrics
   dl_metrics_t dl_metrics;

@@ -20,9 +20,9 @@
 * srsLTE is under Copyright 2013-2017 by Software Radio Systems Limited.
 * srsLTE can be found under:
 * https://github.com/srsLTE/srsLTE
+*/
 
-
-﻿
+/*
  * Copyright 2013-2019 Software Radio Systems Limited
  *
  * This file is part of srsLTE.

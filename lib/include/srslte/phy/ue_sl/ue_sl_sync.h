@@ -222,9 +222,11 @@ SRSLTE_API void srslte_ue_sl_sync_cfo_reset(srslte_ue_sl_sync_t *q);
 
 SRSLTE_API void srslte_ue_sl_sync_reset(srslte_ue_sl_sync_t *q);
 
-SRSLTE_API int srslte_ue_sl_sync_start_agc(srslte_ue_sl_sync_t *q, 
-                                        double (set_gain_callback)(void*, double), 
-                                        float init_gain_value); 
+SRSLTE_API int srslte_ue_sl_sync_start_agc(srslte_ue_sl_sync_t* q,
+                                        double(set_gain_callback)(void*, double),
+                                        double min_gain,
+                                        double max_gain,
+                                        double init_gain_value);
 
 SRSLTE_API uint32_t srslte_ue_sl_sync_sf_len(srslte_ue_sl_sync_t *q); 
 
@@ -270,15 +272,15 @@ SRSLTE_API uint32_t srslte_ue_sl_sync_get_sfidx(srslte_ue_sl_sync_t *q);
 
 SRSLTE_API float srslte_ue_sl_sync_get_cfo(srslte_ue_sl_sync_t *q);
 
-SRSLTE_API void srslte_ue_sl_sync_set_sfo_ema(srslte_ue_sl_sync_t *q,
-                                              float ema_coefficient);
-                                              
 SRSLTE_API float srslte_ue_sl_sync_get_sfo(srslte_ue_sl_sync_t *q);
 
 SRSLTE_API int srslte_ue_sl_sync_get_last_sample_offset(srslte_ue_sl_sync_t *q); 
 
-SRSLTE_API void srslte_ue_sl_sync_set_sample_offset_correct_period(srslte_ue_sl_sync_t *q, 
-                                                                uint32_t nof_subframes); 
+SRSLTE_API void srslte_ue_sl_sync_set_sfo_correct_period(srslte_ue_sl_sync_t *q,
+                                                         uint32_t nof_subframes);
+
+SRSLTE_API void srslte_ue_sl_sync_set_sfo_ema(srslte_ue_sl_sync_t *q,
+                                              float ema_coefficient);
 
 SRSLTE_API void srslte_ue_sl_sync_get_last_timestamp(srslte_ue_sl_sync_t *q, 
                                                   srslte_timestamp_t *timestamp);

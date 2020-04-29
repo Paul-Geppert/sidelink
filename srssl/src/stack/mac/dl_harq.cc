@@ -314,8 +314,18 @@ void dl_harq_entity::dl_harq_process::dl_tb_process::new_grant_dl(mac_interface_
     }
   }
 
-  #if NOT_SIDELINK
-  calc_is_new_transmission(grant);
+  // sidelink extension
+  if (grant.rnti != SRSLTE_RNTI_SL_PLACEHOLDER) {
+    calc_is_new_transmission(grant);
+  } else {
+    // For sidelink we use the ndi indicator to tell us if this is a new transmission or not,
+    // instead of toggling it.
+    if (grant.tb[tid].ndi_present) {
+      is_new_transmission = grant.tb[tid].ndi;
+    } else {
+      is_new_transmission = false;
+    }
+  }
 
   // If this is a new transmission or the size of the TB has changed
   if (is_new_transmission || (cur_grant.tb[tid].tbs != grant.tb[tid].tbs)) {
@@ -328,26 +338,6 @@ void dl_harq_entity::dl_harq_process::dl_tb_process::new_grant_dl(mac_interface_
     ack    = false;
     n_retx = 0;
     srslte_softbuffer_rx_reset_tbs(&softbuffer, grant.tb[tid].tbs * 8);
-  }
-  #endif
-
-  // detect a new sidelink transmission
-  if(grant.tb[tid].rv == 0) {
-    ack    = false;
-    n_retx = 0;
-    srslte_softbuffer_rx_reset_tbs(&softbuffer, grant.tb[tid].tbs * 8);
-
-  } else if(grant.tb[tid].rv == 2) {
-    // this is a re-transmission, check if it belongs to previous decoding
-    if((cur_grant.tb[tid].tbs != grant.tb[tid].tbs) || (cur_grant.sl_tti + grant.sl_gap  != grant.sl_tti)) {
-      printf("--> grants seem to be unrelated, resetting\n");
-      ack    = false;
-      n_retx = 0;
-      srslte_softbuffer_rx_reset_tbs(&softbuffer, grant.tb[tid].tbs * 8);
-    }
-
-  } else {
-    printf("Warning: unexpected rv value in grant: %d\n", grant.tb[tid].rv);
   }
 
   n_retx++;

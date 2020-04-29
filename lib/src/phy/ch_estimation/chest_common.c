@@ -126,7 +126,8 @@ void srslte_chest_average_pilots(cf_t *input, cf_t *output, float *filter,
                                  uint32_t nof_ref, uint32_t nof_symbols, uint32_t filter_len) 
 {
   for (int l=0;l<nof_symbols;l++) {
-    srslte_conv_same_cf(&input[l*nof_ref], filter, &output[l*nof_ref], nof_ref, filter_len);    
+    // srslte_conv_same_cf(&input[l*nof_ref], filter, &output[l*nof_ref], nof_ref, filter_len);
+    srslte_conv_mirror_edges_cf(&input[l*nof_ref], filter, &output[l*nof_ref], nof_ref, filter_len);
   }
 }
 

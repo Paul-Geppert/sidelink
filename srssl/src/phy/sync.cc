@@ -554,6 +554,11 @@ void sync::run_thread()
                 }
               }
 
+              // apply agc value from previous run of this worker
+              if(ue_sync.do_agc) {
+                srslte_agc_process_precalculated(&ue_sync.agc, worker->get_last_agc());
+              }
+
               Debug("SYNC:  Worker %d synchronized\n", worker->get_id());
 
               // Read Asynchronous SCell, for each asynch active object
@@ -671,7 +676,7 @@ void sync::run_thread()
               // }
               break;
             case 0:
-              Warning("SYNC:  Out-of-sync detected in PSS/SSS\n");
+              Warning("SYNC:  Out-of-sync detected in PSS/SSS, forcing to sfn sync tti: %d sync state: %d\n", tti, ue_sync.state);
               out_of_sync();
               worker->release();
 
@@ -824,20 +829,18 @@ void sync::set_cfo(float cfo)
 
 void sync::set_agc_enable(bool enable)
 {
-  printf("No AGC implemented for now.\n");
-
-  // if (enable) {
-  //   if (running && radio_h) {
-  //     srslte_rf_info_t* rf_info = radio_h->get_info(0);
-  //     srslte_ue_sync_start_agc(
-  //         &ue_sync, callback_set_rx_gain, rf_info->min_rx_gain, rf_info->max_rx_gain, radio_h->get_rx_gain(0));
-  //     search_p.set_agc_enable(true);
-  //   } else {
-  //     ERROR("Error setting AGC: PHY not initiatec\n");
-  //   }
-  // } else {
-  //   ERROR("Error stopping AGC: not implemented\n");
-  // }
+  if (enable) {
+    if (running && radio_h) {
+      srslte_rf_info_t* rf_info = radio_h->get_info(0);
+      srslte_ue_sl_sync_start_agc(
+          &ue_sync, callback_set_rx_gain, rf_info->min_rx_gain, rf_info->max_rx_gain, radio_h->get_rx_gain(0));
+      search_p.set_agc_enable(true);
+    } else {
+      ERROR("Error setting AGC: PHY not initiatec\n");
+    }
+  } else {
+    ERROR("Error stopping AGC: not implemented\n");
+  }
 }
 
 void sync::set_time_adv_sec(float time_adv_sec)
@@ -892,8 +895,7 @@ void sync::set_ue_sync_opts(srslte_ue_sl_sync_t* q, float cfo)
   }
 
   // Set SFO ema and correct period
-  // @todo: no implemented, name changed during sidelink implementaion in srs main
-  // srslte_ue_sl_sync_set_sfo_correct_period(q, worker_com->args->sfo_correct_period);
+  srslte_ue_sl_sync_set_sfo_correct_period(q, worker_com->args->sfo_correct_period);
   srslte_ue_sl_sync_set_sfo_ema(q, worker_com->args->sfo_ema);
 
   sss_alg_t sss_alg = SSS_FULL;
@@ -1106,19 +1108,17 @@ float sync::search::get_last_cfo()
 
 void sync::search::set_agc_enable(bool enable)
 {
-  printf("phch_recv::search::set_agc_enable is not implemented.\n");
-  return;
+  if (enable) {
+    srslte_rf_info_t* rf_info = p->radio_h->get_info(0);
+    srslte_ue_sl_sync_start_agc(&ue_mib_sync.ue_sl_sync,
+                             callback_set_rx_gain,
+                             rf_info->min_rx_gain,
+                             rf_info->max_rx_gain,
+                             p->radio_h->get_rx_gain(0));
+  } else {
+    ERROR("Error stop AGC not implemented\n");
+  }
 
-  // if (enable) {
-  //   srslte_rf_info_t* rf_info = p->radio_h->get_info(0);
-  //   srslte_ue_sync_start_agc(&ue_mib_sync.ue_sync,
-  //                            callback_set_rx_gain,
-  //                            rf_info->min_rx_gain,
-  //                            rf_info->max_rx_gain,
-  //                            p->radio_h->get_rx_gain(0));
-  // } else {
-  //   ERROR("Error stop AGC not implemented\n");
-  // }
 }
 
 sync::search::ret_code sync::search::run(srslte_cell_t* cell)

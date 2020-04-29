@@ -138,6 +138,7 @@ int ue_stack_lte::init(const stack_args_t& args_, srslte::logger* logger_)
     return SRSLTE_ERROR;
   }
 
+  mac.sidelink_id = args.rrc.sidelink_id;
   mac.init(phy, &rlc, &rrc);
   // rlc.init(&pdcp, &rrc, &mac, 0 /* RB_ID_SRB0 */);
 

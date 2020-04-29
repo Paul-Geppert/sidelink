@@ -53,7 +53,6 @@
 
 #include "srslte/phy/agc/agc.h"
 #include "srslte/phy/utils/vector.h"
-#include "srslte/phy/utils/debug.h"
 
 int srslte_agc_init (srslte_agc_t *q, srslte_agc_mode_t mode) {
   return srslte_agc_init_acc(q, mode, 0);
@@ -164,7 +163,7 @@ void srslte_agc_process(srslte_agc_t *q, cf_t *signal, uint32_t len) {
 
       // Set gain
       gain_uhd_db = q->set_gain_callback(q->uhd_handler, gain_db);
-      q->gain = pow(10, gain_uhd_db / 10);
+      // q->gain = pow(10, gain_uhd_db / 10);
     }
     float *t; 
     switch(q->mode) {
@@ -205,7 +204,96 @@ void srslte_agc_process(srslte_agc_t *q, cf_t *signal, uint32_t len) {
       if (q->frame_cnt == 0) {
         q->y_out = (1-q->bandwidth) * q->y_out + q->bandwidth * y;
         if (!q->lock) {
+
+          // update gain with last returned value from uhd
+          q->gain = pow(10, gain_uhd_db / 10);
+
+          printf("gain_uhd_db: %f -> %f db |  q->gain: %f * %f\n", gain_uhd_db,  pow(10, gain_uhd_db / 10), q->gain, q->target / q->y_out);
           q->gain *= q->target / q->y_out;
+          
+          gain_db = 10.0 * log10(q->gain);
+
+        }
+        INFO("AGC gain: %.2f (%.2f) y_out=%.3f, y=%.3f target=%.1f\n", gain_db, gain_uhd_db, q->y_out, y, q->target);
+      }
+    }
+  }
+}
+
+
+
+void srslte_agc_process_precalculated(srslte_agc_t *q, float y) {
+    if (!q->lock) {
+    double gain_db = 10.0 * log10(q->gain);
+    double gain_uhd_db = 50.0;
+
+    if (q->mode != SRSLTE_AGC_MODE_PEAK_AMPLITUDE) {
+      ERROR("We need to run in PEAK AMPLITUDE MODE.\n");
+      return;
+    }
+
+    // Apply current gain to input signal 
+    if (!q->uhd_handler) {
+      //srslte_vec_sc_prod_cfc(signal, q->gain, signal, len);
+      ERROR("We need a UHD handler for this mode.\n");
+    } else {
+      if (gain_db < q->min_gain) {
+        gain_db = q->min_gain + 5.0;
+        INFO("Warning: Rx signal strength is too high. Forcing minimum Rx gain %.2fdB\n", gain_db);
+      } else if (gain_db > q->max_gain) {
+        gain_db = q->max_gain;
+        INFO("Warning: Rx signal strength is too weak. Forcing maximum Rx gain %.2fdB\n", gain_db);
+      } else if (isinf(gain_db) || isnan(gain_db)) {
+        gain_db = (q->min_gain + q->max_gain) / 2.0;
+        INFO("Warning: AGC went to an unknown state. Setting Rx gain to %.2fdB\n", gain_db);
+      }
+
+        // Set gain
+        gain_uhd_db = q->set_gain_callback(q->uhd_handler, gain_db);
+        // printf("Set gain to %f and it returned %f\n", gain_db, gain_uhd_db);
+        // q->gain = pow(10, gain_uhd_db / 10);
+    }
+
+
+    // printf("y: %f\n", y);
+    if (q->nof_frames > 0) {
+      q->y_tmp[q->frame_cnt++] = y; 
+      if (q->frame_cnt == q->nof_frames) {
+        q->frame_cnt = 0; 
+        switch(q->mode) {
+          case SRSLTE_AGC_MODE_ENERGY:
+            y = srslte_vec_acc_ff(q->y_tmp, q->nof_frames)/q->nof_frames;
+            break;
+          case SRSLTE_AGC_MODE_PEAK_AMPLITUDE:
+            y = q->y_tmp[srslte_vec_max_fi(q->y_tmp, q->nof_frames)];
+            break;
+          default:
+            ERROR("Unsupported AGC mode\n");
+            return; 
+        }
+      }
+    }
+    
+    if (q->isfirst) {
+      q->y_out = y; 
+      q->isfirst = false; 
+    } else {
+      if (q->frame_cnt == 0) {
+        q->y_out = (1-q->bandwidth) * q->y_out + q->bandwidth * y;
+        if (!q->lock) {
+
+          // update gain with last returned value from uhd
+          q->gain = pow(10, gain_uhd_db / 10);
+
+          printf("gain_uhd_db: %f -> %f db |  q->gain: %f * %f | y_out %f y %f\n", gain_uhd_db,  pow(10, gain_uhd_db / 10), q->gain, q->target / q->y_out, q->y_out, y);
+          q->gain *= q->target / q->y_out;
+          
+          gain_db = 10.0 * log10(q->gain);
+          // // Set gain
+          // gain_uhd_db = q->set_gain_callback(q->uhd_handler, gain_db);
+          // printf("Set gain to %f and it returned %f\n", gain_db, gain_uhd_db);
+          // // q->gain = pow(10, gain_uhd_db / 10);
+
         }
         INFO("AGC gain: %.2f (%.2f) y_out=%.3f, y=%.3f target=%.1f\n", gain_db, gain_uhd_db, q->y_out, y, q->target);
       }

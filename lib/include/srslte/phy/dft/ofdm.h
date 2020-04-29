@@ -87,6 +87,9 @@ typedef struct SRSLTE_API{
   bool freq_shift;
   float freq_shift_f;
   cf_t *shift_buffer; 
+
+  int cp_shift_nsamples;
+  cf_t *cp_shift_correction;
 }srslte_ofdm_t;
 
 SRSLTE_API int srslte_ofdm_init_(srslte_ofdm_t *q, 
@@ -168,6 +171,9 @@ SRSLTE_API void srslte_ofdm_tx_sf(srslte_ofdm_t *q);
 
 SRSLTE_API int srslte_ofdm_set_freq_shift(srslte_ofdm_t *q, 
                                          float freq_shift); 
+
+SRSLTE_API int srslte_ofdm_set_cp_shift(srslte_ofdm_t *q,
+                                        int cp_shift);
 
 SRSLTE_API void srslte_ofdm_set_normalize(srslte_ofdm_t *q, 
                                          bool normalize_enable); 

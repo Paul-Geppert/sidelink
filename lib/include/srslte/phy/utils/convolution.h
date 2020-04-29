@@ -117,4 +117,10 @@ SRSLTE_API uint32_t srslte_conv_same_cc(cf_t *input,
                                         uint32_t input_len, 
                                         uint32_t filter_len);
 
+SRSLTE_API uint32_t srslte_conv_mirror_edges_cf(cf_t *input, 
+                                                float *filter, 
+                                                cf_t *output, 
+                                                uint32_t input_len, 
+                                                uint32_t filter_len);
+
 #endif // SRSLTE_CONVOLUTION_H

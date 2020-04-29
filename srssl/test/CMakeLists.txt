@@ -29,6 +29,10 @@ add_executable(mac_test_sl mac_test.cc)
 target_link_libraries(mac_test_sl srssl_mac srssl_phy srslte_common srslte_phy srslte_radio srslte_asn1 rrc_asn1 ${CMAKE_THREAD_LIBS_INIT} ${Boost_LIBRARIES})
 add_test(mac_test_sl mac_test_sl)
 
+add_executable(sps_test_sl sps_test.cc)
+target_link_libraries(sps_test_sl srssl_mac srssl_phy srslte_common srslte_phy srslte_radio srslte_asn1 rrc_asn1 ${CMAKE_THREAD_LIBS_INIT} ${Boost_LIBRARIES})
+add_test(sps_test_sl sps_test_sl)
+
 if(ENABLE_REST)
     add_executable(rest_test rest_test.cc)
     target_link_libraries(rest_test srssl_upper srssl_phy srslte_common rrc_asn1 ${ORCANIA_LIBRARIES} ${ULFIUS_LIBRARIES} ${JANSSON_LIBRARIES})

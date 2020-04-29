@@ -112,6 +112,20 @@ int srslte_ue_sl_mib_init(srslte_ue_sl_mib_t * q,
     }
     bzero(q->ce, SRSLTE_SF_LEN_RE(max_prb, SRSLTE_CP_NORM) * sizeof(cf_t));
 
+    q->ce_plot = srslte_vec_malloc(max_prb * SRSLTE_NRE * sizeof(cf_t));
+    if (!q->ce_plot) {
+      perror("malloc");
+      goto clean_exit;
+    }
+    bzero(q->ce_plot, max_prb * sizeof(cf_t));
+
+    q->td_plot = srslte_vec_malloc(SRSLTE_SF_LEN_MAX * sizeof(cf_t));
+    if (!q->td_plot) {
+      perror("malloc");
+      goto clean_exit;
+    }
+    bzero(q->td_plot, SRSLTE_SF_LEN_MAX * sizeof(cf_t));
+
     if (srslte_ofdm_rx_init(&q->fft, SRSLTE_CP_NORM, in_buffer[0], q->sf_symbols, max_prb)) {
       fprintf(stderr, "Error initializing FFT\n");
       goto clean_exit;
@@ -142,6 +156,12 @@ void srslte_ue_sl_mib_free(srslte_ue_sl_mib_t * q)
   }
   if (q->ce) {
     free(q->ce);
+  }
+  if (q->ce_plot) {
+    free(q->ce_plot);
+  }
+  if (q->td_plot) {
+    free(q->td_plot);
   }
   srslte_sync_free(&q->sfind);
   srslte_chest_sl_free(&q->chest);
@@ -181,6 +201,12 @@ int srslte_ue_sl_mib_set_cell(srslte_ue_sl_mib_t * q,
 
     if (srslte_pssch_set_cell(&q->pssch, cell)) { 
       fprintf(stderr, "Error creating PSSCH object\n");
+      return SRSLTE_ERROR;
+    }
+
+    // move fft window into CP
+    if (srslte_ofdm_set_cp_shift(&q->fft, SRSLTE_CP_LEN(srslte_symbol_sz(cell.nof_prb), SRSLTE_CP_NORM_0_LEN) / 4)) {
+      fprintf(stderr, "Error moving FFT window into CP\n");
       return SRSLTE_ERROR;
     }
 
@@ -287,8 +313,10 @@ static int sl_pssch_decode(srslte_ue_sl_mib_t * q,
 
     printf("SL-SCH n0 %f\n", srslte_chest_sl_get_noise_estimate(&q->chest));
     printf("RSRP: %f dBm\n", 10*log10(q->chest.pilot_power) + 30 - q->fft.fft_plan.norm*10*log10(q->fft.fft_plan.size));
-    printf("SNR: %f dB\n",
-            10*log10((q->chest.pilot_power-srslte_chest_sl_get_noise_estimate(&q->chest))/srslte_chest_sl_get_noise_estimate(&q->chest)));
+    printf("SNR: %f dB\t%f dB\t%f dB\n",
+            10*log10((q->chest.pilot_power-srslte_chest_sl_get_noise_estimate(&q->chest))/srslte_chest_sl_get_noise_estimate(&q->chest)),
+            10*log10(q->chest.ce_power_estimate / q->chest.noise_estimate),
+            10*log10(q->chest.pilot_power / q->chest.noise_estimate));
     
     
     cf_t *_sf_symbols[SRSLTE_MAX_PORTS]; 
@@ -335,8 +363,8 @@ static int sl_pssch_decode(srslte_ue_sl_mib_t * q,
       printf("HARQ: single decoding successful\n");
     }
 
-    // we need keep track if this cb was already decoded and therefore reported as success
-    bool harq_already_decoded = *q->softbuffers[1]->cb_crc;
+    // we need keep track if this tb was already decoded and therefore reported as success
+    bool harq_already_decoded = q->softbuffers[1]->tb_crc;
 
     gettimeofday(&t[1], NULL);
 
@@ -498,6 +526,17 @@ int srslte_ue_sl_pscch_decode(srslte_ue_sl_mib_t * q,
     if(SRSLTE_SUCCESS != srslte_repo_sci_decode(repo, mdata, &sci)) {
       continue;
     }
+
+    printf("DECODED PSCCH  N_X_ID: %x on tti %d t_SL_k: %d (rbp:%d) SCI-1: frl: 0x%x(n: %d L: %d) gap: %d mcs: %d rti: %d\n",
+            crc_rem, 0,
+            srslte_repo_get_t_SL_k(repo, 0),
+            rbp,
+            sci.frl,
+            sci.frl_n_subCH,
+            sci.frl_L_subCH,
+            sci.time_gap,
+            sci.mcs.idx,
+            sci.rti);
 
     printf("DECODED PSCCH  N_X_ID: %x  n0: %f\n", crc_rem, srslte_chest_sl_get_noise_estimate(&q->chest));
 
