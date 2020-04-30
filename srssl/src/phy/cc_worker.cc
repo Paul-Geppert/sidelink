@@ -1141,6 +1141,7 @@ bool cc_worker::work_sl_tx() {
 
     sci.mcs.idx = phy->pssch_fixed_i_mcs;
 
+    L_subch = 0;
     uint8_t last_valid_l_subch = 0;
 
     // get valid prb sizes by checking all subchannel sizes
