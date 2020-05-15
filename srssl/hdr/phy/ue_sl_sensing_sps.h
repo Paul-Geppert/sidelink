@@ -132,6 +132,10 @@ struct Reservation {
 
   uint32_t startRsvpTti;
 
+  // we use these variables to determine, which tti belongs to the current reservation
+  uint32_t _startRsvpTti;
+  uint32_t _Cresel;
+
   uint32_t numResources;
   ReservationResource resources[2]; // @todo initially just two resources per reservation period
 };

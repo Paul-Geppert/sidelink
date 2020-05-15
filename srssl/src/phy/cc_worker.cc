@@ -428,9 +428,16 @@ bool cc_worker::decode_pscch_dl(srsue::mac_interface_phy_lte::mac_grant_dl_t* gr
       // retransmission
       grant->pid = tti % 8;
     }
+
+    // we use this to distinguish transmissions from each other
+    grant->sl_tti = tti;
+    grant->sl_gap = sci.time_gap;
 #else
     // todo: this may still be wrong, as i assume need at least 16 different processes
     grant->pid = (phy->ue_repo.subframe_rp[tti] + (8 - sci.rti * sci.time_gap)) % 8;
+
+    grant->sl_tti = phy->ue_repo.subframe_rp[tti];
+    grant->sl_gap = sci.time_gap;
 #endif
 
     grant->tb[0].tbs = sci.mcs.tbs / (uint32_t) 8;
@@ -696,7 +703,7 @@ bool cc_worker::work_sl_rx()
         srslte_vec_avg_power_cf(ue_sl.pssch.SymSPSRssi[0],
                                 // L_subch * phy->ue_repo.rp.sizeSubchannel_r14 * n_re_pssch_rssi); 
                                 // L_subch * phy->ue_repo.rp.sizeSubchannel_r14 * SRSLTE_NRE * n_re_pssch_rssi);
-                                phy->ue_repo.rp.numSubchannel_r14 * phy->ue_repo.rp.sizeSubchannel_r14 * SRSLTE_NRE * n_re_pssch_rssi);
+                                phy->ue_repo.rp.numSubchannel_r14 * phy->ue_repo.rp.sizeSubchannel_r14 * SRSLTE_NRE * n_re_pssch_rssi) + (1 + (rand() % 1000)) / 1000.0E8;
     //srslte_vec_avg_power_cf(ue_sl.pssch.SymSPSRssi[0], 1); // for calc time testing: pw avg for one sym. 
     // clock_gettime(CLOCK_MONOTONIC, &end);
     // time_taken = (end.tv_sec - start.tv_sec) * 1e9;
@@ -733,7 +740,7 @@ bool cc_worker::work_sl_rx()
                                     phy->ue_repo.rp.startRB_Subchannel_r14 + rbp * phy->ue_repo.rp.sizeSubchannel_r14,
                                     phy->ue_repo.rp.sizeSubchannel_r14);
 
-      float rssi = srslte_vec_avg_power_cf(ue_sl.pssch.SymSPSRssi[0], n_re_pscch_subchannel);
+      float rssi = srslte_vec_avg_power_cf(ue_sl.pssch.SymSPSRssi[0], n_re_pscch_subchannel) + (1 + (rand() % 1000)) / 1000.0E8;
 
       phy->sensing_sps->addChannelSRSSI(tti, rbp, 10 * log10(rssi * 1000));
     }
@@ -1159,12 +1166,14 @@ bool cc_worker::work_sl_tx() {
 
       srslte_repo_sci_encode(&phy->ue_repo, sci_buffer, &sci);
 
-      printf("TTI: %d t_SL_k: %d ENCODED SCI-1: prio: %d frl(%d): 0x%x rri: %d gap: %d mcs: %d rti: %d\n",
+      printf("TTI: %d t_SL_k: %d ENCODED SCI-1: prio: %d frl(%d): 0x%x(n: %d L: %d) rri: %d gap: %d mcs: %d rti: %d\n",
               tti,
               t_SL_k,
               sci.priority,
               srslte_repo_frl_len(&phy->ue_repo),
               sci.frl,
+              sci.frl_n_subCH,
+              sci.frl_L_subCH,
               sci.resource_reservation,
               sci.time_gap,
               sci.mcs.idx,

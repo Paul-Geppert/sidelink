@@ -73,9 +73,11 @@ SensingSPS::SensingSPS(SL_CommResourcePoolV2X_r14*     _resourcePool,
 
   reservation.active = false;
 
+#ifdef USE_SENSING_SPS
   printf("SensingSPS numSubChannels=%d sensingWindowSize=%d\n",
          resourcePool->numSubchannel_r14,
          sensingWindowSize);
+#endif
   assert(sensingWindowSize <= MAX_SENSING_WINDOW);
 
   memset(numScis, 0, sizeof(numScis));
@@ -164,6 +166,10 @@ ReservationResource* SensingSPS::schedule(uint32_t tti, uint32_t bufferOccupancy
             reservation.active = true;
             reservation.Cresel = calc_reselection_counter(reservation.rsvp);
             reservation.startRsvpTti = tti;
+
+            reservation._Cresel = reservation.Cresel;
+            reservation._startRsvpTti = reservation.startRsvpTti;
+
             printf("Reservation has been renewed\n");
           }
         }
@@ -218,6 +224,9 @@ ReservationResource* SensingSPS::schedule(uint32_t tti, uint32_t bufferOccupancy
       reservation.startRsvpTti = tti;
       reservation.numResources = 0;
 
+      reservation._Cresel = reservation.Cresel;
+      reservation._startRsvpTti = reservation.startRsvpTti;
+
       reservation.resources[reservation.numResources].rsvpOffset = selectionWindowOffset;
       reservation.resources[reservation.numResources].subchannelStart = subchannelStart;
       reservation.resources[reservation.numResources].numSubchannels = numSubchannels;
@@ -241,9 +250,18 @@ ReservationResource* SensingSPS::schedule(uint32_t tti, uint32_t bufferOccupancy
   // Check if we now have a reservation and have something to send this TTI
   if (reservation.active) {
     for (uint32_t i = 0; i < reservation.numResources; ++i) {
-      if (tti == tti_add(reservation.startRsvpTti,reservation.resources[i].rsvpOffset)) {
-        printf("TX resource tti %d start %d length %d retx %d\n",tti,reservation.resources[i].subchannelStart,reservation.resources[i].numSubchannels,reservation.resources[i].is_retx);
-        return &reservation.resources[i]; // Only one reservation per TTI
+      // if (tti == tti_add(reservation.startRsvpTti,reservation.resources[i].rsvpOffset)) {
+      //   printf("TX resource tti %d start %d length %d retx %d\n",tti,reservation.resources[i].subchannelStart,reservation.resources[i].numSubchannels,reservation.resources[i].is_retx);
+      //   return &reservation.resources[i]; // Only one reservation per TTI
+      // }
+
+      // if we miss the first reservation all transmission opportunies of this interval will get
+      // skipped, so we check all opportunities
+      for(uint32_t j=0; j<=reservation._Cresel; j++) {
+        if (tti == tti_add(reservation._startRsvpTti, reservation.resources[i].rsvpOffset + j*reservation.rsvp)) {
+          printf("TX resource tti %d start %d length %d retx %d iter: %d\n",tti,reservation.resources[i].subchannelStart,reservation.resources[i].numSubchannels,reservation.resources[i].is_retx, j);
+          return &reservation.resources[i]; // Only one reservation per TTI
+        }
       }
     }
   }

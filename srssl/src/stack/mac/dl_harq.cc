@@ -340,6 +340,14 @@ void dl_harq_entity::dl_harq_process::dl_tb_process::new_grant_dl(mac_interface_
     srslte_softbuffer_rx_reset_tbs(&softbuffer, grant.tb[tid].tbs * 8);
   }
 
+  // this is a re-transmission, check if it belongs to previous decoding
+  if(!is_new_transmission && (cur_grant.sl_tti + cur_grant.sl_gap != grant.sl_tti)) {
+    printf("--> grants seem to be unrelated, resetting\n");
+    ack    = false;
+    n_retx = 0;
+    srslte_softbuffer_rx_reset_tbs(&softbuffer, grant.tb[tid].tbs * 8);
+  }
+
   n_retx++;
 
   // If data has not yet been successfully decoded
