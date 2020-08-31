@@ -497,6 +497,38 @@ int rf_uhd_open_multi(char *args, void **h, uint32_t nof_channels)
       return -1; 
     }
 
+
+    // GPIO init for TDD trigger signal
+    #define GPIO_PIN_TRIGGER (0)
+    #define GPIO_PIN_ALWAYS_ON (1)
+
+    size_t mboard = 0;
+    char* bank = "FP0";
+    uint32_t mask = (1 << 11) - 1; // default: 11 bits per gpio register
+    
+    // set data direction register
+    error = uhd_usrp_set_gpio_attr(handler->usrp, bank, "DDR", 0x00, mask, mboard);
+
+    // set control register
+    error = uhd_usrp_set_gpio_attr(handler->usrp, bank, "CTRL", 0x00, mask, mboard);
+
+    // set output values (OUT)
+    error = uhd_usrp_set_gpio_attr(handler->usrp, bank, "OUT", 0x00, mask, mboard);
+
+    // set ATR register
+    error = uhd_usrp_set_gpio_attr(handler->usrp, bank, "ATR_0X", 0x00, mask, mboard);
+    error = uhd_usrp_set_gpio_attr(handler->usrp, bank, "ATR_RX", 0x00, mask, mboard);
+    error = uhd_usrp_set_gpio_attr(handler->usrp, bank, "ATR_TX", 0x00, mask, mboard);
+    error = uhd_usrp_set_gpio_attr(handler->usrp, bank, "ATR_XX", 0x00, mask, mboard);
+
+    // setup always on pin
+    error = uhd_usrp_set_gpio_attr(handler->usrp, bank, "DDR", (1 << GPIO_PIN_ALWAYS_ON), (1 << GPIO_PIN_ALWAYS_ON), mboard);
+    error = uhd_usrp_set_gpio_attr(handler->usrp, bank, "OUT", (1 << GPIO_PIN_ALWAYS_ON), (1 << GPIO_PIN_ALWAYS_ON), mboard);
+
+    // setup GPIO as TDD trigger
+    error = uhd_usrp_set_gpio_attr(handler->usrp, bank, "DDR", (1 << GPIO_PIN_TRIGGER), (1 << GPIO_PIN_TRIGGER), mboard);
+    error = uhd_usrp_set_gpio_attr(handler->usrp, bank, "OUT", (0 << GPIO_PIN_TRIGGER), (1 << GPIO_PIN_TRIGGER), mboard);
+
     /* Set transmitter subdev spec if specified */
     if (strlen(tx_subdev_str)) {
       uhd_subdev_spec_handle subdev_spec_handle = {0};
@@ -998,3 +1030,31 @@ unlock:
   return ret;
 }
 
+void rf_uhd_timed_gpio(void *h,
+                        time_t secs,
+                        double frac_secs,
+                        bool enable)
+{
+  rf_uhd_handler_t* handler = (rf_uhd_handler_t*) h;
+
+  pthread_mutex_lock(&handler->tx_mutex);
+
+  uhd_error error = uhd_usrp_set_command_time(handler->usrp, secs, frac_secs, 0);
+
+  if (error) {
+    ERROR("Error sending timed command to UHD: %d\n", error);
+    goto unlock;
+  }
+
+  // set trigger GPIO 
+  error = uhd_usrp_set_gpio_attr(handler->usrp, "FP0", "OUT", (int)enable << GPIO_PIN_TRIGGER, (1 << GPIO_PIN_TRIGGER), 0);
+
+  if (error) {
+    ERROR("Error sending GPIO to UHD: %d\n", error);
+    goto unlock;
+  }
+
+  unlock:
+  pthread_mutex_unlock(&handler->tx_mutex);
+  return;
+}

@@ -279,6 +279,11 @@ void radio::tx_end()
   }
 }
 
+void radio::set_gpio(srslte_timestamp_t tx_time, bool enable)
+{
+  srslte_rf_timed_gpio(&rf_device, tx_time.full_secs, tx_time.frac_secs, enable);
+}
+
 void radio::set_freq_offset(double freq) {
   freq_offset = freq;
 }

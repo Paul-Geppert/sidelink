@@ -151,3 +151,7 @@ SRSLTE_API int rf_uhd_send_timed_multi(void *h,
                                        bool is_start_of_burst,
                                        bool is_end_of_burst);
 
+SRSLTE_API void rf_uhd_timed_gpio(void *h,
+                                  time_t secs,
+                                  double frac_secs,
+                                  bool enable);

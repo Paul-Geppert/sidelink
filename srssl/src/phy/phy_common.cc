@@ -108,6 +108,8 @@ phy_common::phy_common(uint32_t max_workers) : tx_sem(max_workers)
   // set initial snr value for transmit samples
   tx_snr = 60.0;
 
+  is_transmitting[SRSLTE_MAX_RADIOS] = {};
+
   rar_grant_tti = -1;
 
   bzero(zeros, 50000 * sizeof(cf_t));
@@ -668,7 +670,26 @@ void phy_common::worker_end(uint32_t           tti,
 
       radio_h->tx(i, buffer[i], nof_samples[i], tx_time[i]);
       is_first_of_burst[i] = false;
+
+      if(!is_transmitting[i]){
+        // printf("ENabling GPIO @ %ld %f\n", tx_time[i].full_secs, tx_time[i].frac_secs);
+        // @todo: maybe enable earlier to account for switching time
+        radio_h->set_gpio(i, tx_time[i], true);
+        is_transmitting[i] = true;
+      }
+
     } else {
+
+      if(is_transmitting[i]) {
+        // stop a bit earlier as the last ofdm symbol is getting ignored
+        srslte_timestamp_t stoptime;
+        srslte_timestamp_copy(&stoptime, &tx_time[i]);
+        srslte_timestamp_sub(&stoptime, 0, 0.00005);
+
+        radio_h->set_gpio(i, stoptime, false);
+        is_transmitting[i] = false;
+      }
+
       if (radio_h->is_continuous_tx()) {
         if (!is_first_of_burst[i]) {
 

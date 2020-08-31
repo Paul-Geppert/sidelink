@@ -81,6 +81,7 @@ typedef struct {
   int    (*srslte_rf_send_timed_multi)(void *h, void *data[4], int nsamples,
                      time_t secs, double frac_secs, bool has_time_spec,
                      bool blocking, bool is_start_of_burst, bool is_end_of_burst);
+  void   (*srslte_rf_timed_gpio)(void *h, time_t secs, double frac_secs, bool enable);
 } rf_dev_t; 
 
 /* Define implementation for UHD */
@@ -117,7 +118,8 @@ static rf_dev_t dev_uhd = {"UHD",
                            rf_uhd_recv_with_time,
                            rf_uhd_recv_with_time_multi,
                            rf_uhd_send_timed,
-                           .srslte_rf_send_timed_multi = rf_uhd_send_timed_multi};
+                           .srslte_rf_send_timed_multi = rf_uhd_send_timed_multi,
+                           .srslte_rf_timed_gpio = rf_uhd_timed_gpio};
 #endif
 
 /* Define implementation for bladeRF */
@@ -154,7 +156,8 @@ static rf_dev_t dev_blade = {"bladeRF",
                              rf_blade_recv_with_time,
                              rf_blade_recv_with_time_multi,
                              rf_blade_send_timed,
-                             .srslte_rf_send_timed_multi = rf_blade_send_timed_multi};
+                             .srslte_rf_send_timed_multi = rf_blade_send_timed_multi,
+                             .srslte_rf_timed_gpio = NULL};
 #endif
 
 #ifdef ENABLE_SOAPYSDR
@@ -190,7 +193,8 @@ static rf_dev_t dev_soapy = {"soapy",
                              rf_soapy_recv_with_time,
                              rf_soapy_recv_with_time_multi,
                              rf_soapy_send_timed,
-                             .srslte_rf_send_timed_multi = rf_soapy_send_timed_multi};
+                             .srslte_rf_send_timed_multi = rf_soapy_send_timed_multi,
+                             .srslte_rf_timed_gpio = NULL};
 
 #endif
 
@@ -228,7 +232,8 @@ static rf_dev_t dev_zmq = {"zmq",
                            rf_zmq_recv_with_time,
                            rf_zmq_recv_with_time_multi,
                            rf_zmq_send_timed,
-                           .srslte_rf_send_timed_multi = rf_zmq_send_timed_multi};
+                           .srslte_rf_send_timed_multi = rf_zmq_send_timed_multi,
+                           .srslte_rf_timed_gpio = NULL};
 #endif
 
 //#define ENABLE_DUMMY_DEV
@@ -267,6 +272,7 @@ static rf_dev_t dev_dummy = {
   dummy_fnc,
   dummy_fnc,  
   dummy_rcv,
+  dummy_fnc,
   dummy_fnc,
   dummy_fnc,
   dummy_fnc

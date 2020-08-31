@@ -235,6 +235,9 @@ private:
   srslte::log*   log_h;
   srslte::channel_ptr  ul_channel = nullptr;
 
+  // GPIO pin status
+  bool           is_transmitting[SRSLTE_MAX_RADIOS];
+
   int rar_grant_tti;
 
   typedef struct {

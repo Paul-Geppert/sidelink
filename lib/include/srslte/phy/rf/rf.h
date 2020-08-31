@@ -229,5 +229,10 @@ SRSLTE_API int srslte_rf_send_multi(srslte_rf_t *rf,
                                     bool is_start_of_burst,
                                     bool is_end_of_burst);
 
+SRSLTE_API void srslte_rf_timed_gpio(srslte_rf_t *rf,
+                                      time_t secs,
+                                      double frac_secs,
+                                      bool enable);
+
 #endif // SRSLTE_RF_H
 

@@ -119,6 +119,8 @@ class radio {
   bool rx_now(cf_t* buffer[SRSLTE_MAX_PORTS], uint32_t nof_samples, srslte_timestamp_t* rxd_time);
   bool rx_at(cf_t* buffer, uint32_t nof_samples, srslte_timestamp_t rx_time);
 
+  void set_gpio(srslte_timestamp_t tx_time, bool enable);
+
   void set_tx_gain(float gain);
   void set_rx_gain(float gain);
   void set_tx_rx_gain_offset(float offset);

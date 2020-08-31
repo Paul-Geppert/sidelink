@@ -395,3 +395,12 @@ int srslte_rf_send_timed2(srslte_rf_t *rf,
 {
   return srslte_rf_send_timed3(rf, data, nsamples, secs, frac_secs, true, true, is_start_of_burst, is_end_of_burst);
 }
+
+void srslte_rf_timed_gpio(srslte_rf_t *rf,
+                               time_t secs,
+                               double frac_secs,
+                               bool enable)
+{
+
+  ((rf_dev_t*) rf->dev)->srslte_rf_timed_gpio(rf->handler, secs, frac_secs, enable);
+}

@@ -81,6 +81,8 @@ public:
   virtual void   set_tx_srate(const uint32_t& radio_idx, const double& srate) = 0;
   virtual void   set_rx_srate(const uint32_t& radio_idx, const double& srate) = 0;
 
+  virtual void set_gpio(const uint32_t& radio_idx, const srslte_timestamp_t& tx_time, const bool& enable)                           = 0;
+
   // getter
   virtual float             get_tx_gain(const uint32_t& radio_idx) = 0;
   virtual float             get_rx_gain(const uint32_t& radio_idx) = 0;
