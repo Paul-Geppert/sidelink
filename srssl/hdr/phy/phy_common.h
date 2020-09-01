@@ -236,7 +236,7 @@ private:
   srslte::channel_ptr  ul_channel = nullptr;
 
   // GPIO pin status
-  bool           is_transmitting[SRSLTE_MAX_RADIOS];
+  bool           is_transmitting[SRSLTE_MAX_RADIOS] = {};
 
   int rar_grant_tti;
 
