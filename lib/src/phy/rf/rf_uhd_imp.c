@@ -206,6 +206,8 @@ static bool find_string(uhd_string_vector_handle h, const char* str)
  * The GPS time is read and the USRP time is set to the next full second during the next PPS.
  * It appears, however, that "uhd_usrp_set_time_next_pps()" which seems to be the correct function
  * to use, doesn't work. The C API call "uhd_usrp_set_time_unknown_pps()" works well.
+ * (rl) with our current setup uhd_usrp_set_time_next_pps works fine, while 
+ * uhd_usrp_set_time_unknown_pps causes the time to be delayed by 1 ms
  * @param handler Pointer to RF handler
  * @return Any error returned by UHD
  */
@@ -247,7 +249,8 @@ static uhd_error set_time_to_gps_time(rf_uhd_handler_t* handler)
 
       full_secs = frac_secs;
       printf("Setting USRP time to %ds\n", full_secs);
-      error = uhd_usrp_set_time_unknown_pps(handler->usrp, full_secs + 1, 0.0);
+      // error = uhd_usrp_set_time_unknown_pps(handler->usrp, full_secs + 1, 0.0);
+      error = uhd_usrp_set_time_next_pps(handler->usrp, full_secs + 1, 0.0, 0);
       if (error != UHD_ERROR_NONE) {
         char err_msg[256];
         uhd_usrp_last_error(handler->usrp, err_msg, 256);
@@ -670,7 +673,6 @@ int rf_uhd_open_multi(char* args, void** h, uint32_t nof_channels)
       printf("Setting usrp clock source to: \"gpsdo\"\n");
       uhd_usrp_set_clock_source(handler->usrp, "gpsdo", 0);
       uhd_usrp_set_time_source(handler->usrp, "gpsdo", 0);
-      set_time_to_gps_time(handler);
       sensor_name = "gps_locked";
     }
     // wait until external reference / GPS is locked
@@ -706,6 +708,8 @@ int rf_uhd_open_multi(char* args, void** h, uint32_t nof_channels)
       uhd_usrp_set_rx_rate(handler->usrp, 1.92e6, i);
       uhd_usrp_set_tx_rate(handler->usrp, 1.92e6, i);
     }
+
+    set_time_to_gps_time(handler);
 
     if (nof_channels > 1 && clock_src != GPSDO) {
       uhd_usrp_set_time_unknown_pps(handler->usrp, 0, 0.0);
