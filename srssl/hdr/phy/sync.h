@@ -150,6 +150,7 @@ private:
     ~sfn_sync();
     void     init(srslte_ue_sl_sync_t* ue_sync,
                   cf_t*             buffer[SRSLTE_MAX_PORTS],
+                  uint32_t          buffer_max_samples_,
                   srslte::log*      log_h,
                   uint32_t          nof_subframes = SFN_SYNC_NOF_SUBFRAMES);
     void     reset();
@@ -164,9 +165,10 @@ private:
     uint32_t          cnt                      = 0;
     uint32_t          timeout                  = 0;
     srslte::log*      log_h                    = nullptr;
-    srslte_ue_sl_sync_t* ue_sync                  = nullptr;
+    srslte_ue_sl_sync_t* ue_sync               = nullptr;
     cf_t*             buffer[SRSLTE_MAX_PORTS] = {};
-    srslte_ue_sl_mib_t   ue_mib                   = {};
+    uint32_t          buffer_max_samples       = 0;
+    srslte_ue_sl_mib_t ue_mib                  = {};
   };
 
   /* TODO: Intra-freq measurements can be improved by capturing 200 ms length signal and run cell search +

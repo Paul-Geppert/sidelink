@@ -709,7 +709,9 @@ int rf_uhd_open_multi(char* args, void** h, uint32_t nof_channels)
       uhd_usrp_set_tx_rate(handler->usrp, 1.92e6, i);
     }
 
-    set_time_to_gps_time(handler);
+    if (clock_src == GPSDO) {
+      set_time_to_gps_time(handler);
+    }
 
     if (nof_channels > 1 && clock_src != GPSDO) {
       uhd_usrp_set_time_unknown_pps(handler->usrp, 0, 0.0);

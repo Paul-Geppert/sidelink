@@ -60,9 +60,12 @@
 #include "srslte/phy/utils/debug.h"
 #include "srslte/phy/utils/vector.h"
 
-int srslte_ue_sl_cellsearch_init(srslte_ue_sl_cellsearch_t * q, uint32_t max_frames, 
-                              int (recv_callback)(void*, void*, uint32_t,srslte_timestamp_t*), 
-                              void *stream_handler) 
+#define CELL_SEARCH_BUFFER_MAX_SAMPLES (3 * SRSLTE_SF_LEN_MAX)
+
+int srslte_ue_sl_cellsearch_init(srslte_ue_sl_cellsearch_t * q,
+                                uint32_t max_frames, 
+                                int (recv_callback)(void*, void*, uint32_t,srslte_timestamp_t*), 
+                                void *stream_handler) 
 {
   int ret = SRSLTE_ERROR_INVALID_INPUTS;
 
@@ -86,9 +89,12 @@ int srslte_ue_sl_cellsearch_init(srslte_ue_sl_cellsearch_t * q, uint32_t max_fra
       goto clean_exit;
     }
 
-    q->sf_buffer[0] = srslte_vec_malloc(3*sizeof(cf_t)*SRSLTE_SF_LEN_PRB(100));
-    q->nof_rx_antennas = 1; 
-    
+    for (int p = 0; p < SRSLTE_MAX_PORTS; p++) {
+      q->sf_buffer[p] = NULL;
+    }
+    q->sf_buffer[0] = srslte_vec_cf_malloc(CELL_SEARCH_BUFFER_MAX_SAMPLES);
+    q->nof_rx_antennas = 1;
+
     q->candidates = calloc(sizeof(srslte_ue_cellsearch_result_t), max_frames);
     if (!q->candidates) {
       perror("malloc");
@@ -118,10 +124,11 @@ clean_exit:
   return ret;
 }
 
-int srslte_ue_sl_cellsearch_init_multi(srslte_ue_sl_cellsearch_t * q, uint32_t max_frames, 
-                              int (recv_callback)(void*, cf_t*[SRSLTE_MAX_PORTS], uint32_t,srslte_timestamp_t*), 
-                              uint32_t nof_rx_antennas,
-                              void *stream_handler) 
+int srslte_ue_sl_cellsearch_init_multi(srslte_ue_sl_cellsearch_t * q, 
+                                        uint32_t max_frames, 
+                                        int (recv_callback)(void*, cf_t*[SRSLTE_MAX_PORTS], uint32_t,srslte_timestamp_t*), 
+                                        uint32_t nof_rx_antennas,
+                                        void *stream_handler) 
 {
   int ret = SRSLTE_ERROR_INVALID_INPUTS;
 
@@ -144,11 +151,11 @@ int srslte_ue_sl_cellsearch_init_multi(srslte_ue_sl_cellsearch_t * q, uint32_t m
       goto clean_exit;
     }
 
-    for (int i=0;i<nof_rx_antennas;i++) {
-      q->sf_buffer[i] = srslte_vec_malloc(3*sizeof(cf_t)*SRSLTE_SF_LEN_PRB(100));
+    for (int i = 0; i < nof_rx_antennas; i++) {
+      q->sf_buffer[i] = srslte_vec_cf_malloc(CELL_SEARCH_BUFFER_MAX_SAMPLES);
     }
-    q->nof_rx_antennas = nof_rx_antennas; 
-    
+    q->nof_rx_antennas = nof_rx_antennas;
+
     q->candidates = calloc(sizeof(srslte_ue_cellsearch_result_t), max_frames);
     if (!q->candidates) {
       perror("malloc");
@@ -180,7 +187,7 @@ clean_exit:
 
 void srslte_ue_sl_cellsearch_free(srslte_ue_sl_cellsearch_t * q)
 {
-  for (int i=0;i<q->nof_rx_antennas;i++) {
+  for (int i = 0; i < q->nof_rx_antennas; i++) {
     if (q->sf_buffer[i]) {
       free(q->sf_buffer[i]);
     }
@@ -322,20 +329,20 @@ int srslte_ue_sl_cellsearch_scan_N_id_2(srslte_ue_sl_cellsearch_t * q,
 
     do {
       
-      ret = srslte_ue_sl_sync_zerocopy_multi(&q->ue_sl_sync, q->sf_buffer);
+      ret = srslte_ue_sl_sync_zerocopy_multi(&q->ue_sl_sync, q->sf_buffer, CELL_SEARCH_BUFFER_MAX_SAMPLES);
       if (ret < 0) {
         fprintf(stderr, "Error calling srslte_ue_sync_work()\n");       
         return -1;
       } else if (ret == 1) {
         /* This means a peak was found and ue_sync is now in tracking state */
-        ret = srslte_sync_sl_get_cell_id(&q->ue_sl_sync.strack);
+        ret = srslte_sync_sl_get_cell_id(&q->ue_sl_sync.sfind);
         if (ret >= 0) {          
           /* Save cell id, cp and peak */
           q->candidates[nof_detected_frames].cell_id = (uint32_t) ret;
-          q->candidates[nof_detected_frames].cp = srslte_sync_sl_get_cp(&q->ue_sl_sync.strack);
-          q->candidates[nof_detected_frames].peak = q->ue_sl_sync.strack.psss.peak_value;
-          q->candidates[nof_detected_frames].psr = srslte_sync_sl_get_peak_value(&q->ue_sl_sync.strack);
-          q->candidates[nof_detected_frames].cfo = srslte_ue_sl_sync_get_cfo(&q->ue_sl_sync);
+          q->candidates[nof_detected_frames].cp = srslte_sync_sl_get_cp(&q->ue_sl_sync.sfind);
+          q->candidates[nof_detected_frames].peak = q->ue_sl_sync.sfind.psss.peak_value;
+          q->candidates[nof_detected_frames].psr = srslte_sync_sl_get_peak_value(&q->ue_sl_sync.sfind);
+          q->candidates[nof_detected_frames].cfo = 15000 * srslte_sync_sl_get_cfo(&q->ue_sl_sync.sfind);//srslte_ue_sl_sync_get_cfo(&q->ue_sl_sync);
           DEBUG
             ("CELL SEARCH: [%3d/%3d/%d]: Found peak PSR=%.3f, Cell_id: %d CP: %s\n",
               nof_detected_frames, nof_scanned_frames, q->nof_valid_frames,

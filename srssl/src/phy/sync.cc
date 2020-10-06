@@ -89,7 +89,8 @@ void sync::init(srslte::radio_interface_phy* _radio,
   uint32_t nof_rf_channels = worker_com->args->nof_rf_channels * worker_com->args->nof_rx_ant;
   for (uint32_t r = 0; r < worker_com->args->nof_radios; r++) {
     for (uint32_t p = 0; p < nof_rf_channels; p++) {
-      sf_buffer[r][p] = (cf_t*)srslte_vec_malloc(sizeof(cf_t) * 3 * SRSLTE_SF_LEN_PRB(100));
+      int bs = SF_BUFFER_MAX_SAMPLES;
+      sf_buffer[r][p] = srslte_vec_cf_malloc(SF_BUFFER_MAX_SAMPLES);
     }
   }
 
@@ -109,7 +110,7 @@ void sync::init(srslte::radio_interface_phy* _radio,
   search_p.init(sf_buffer[0], log_h, nof_rf_channels, this);
 
   // Initialize SFN synchronizer, it uses only pcell buffer
-  sfn_p.init(&ue_sync, sf_buffer[0], log_h);
+  sfn_p.init(&ue_sync, sf_buffer[0], SF_BUFFER_MAX_SAMPLES, log_h);
 
   // Start intra-frequency measurement
   intra_freq_meas.init(worker_com, stack, log_h);
@@ -519,7 +520,7 @@ void sync::run_thread()
           }
 
           // Primary Cell (PCell) Synchronization
-          switch (srslte_ue_sl_sync_zerocopy_multi(&ue_sync, buffer[0])) {
+          switch (srslte_ue_sl_sync_zerocopy_multi(&ue_sync, buffer[0], worker->get_buffer_len())) {
             case 1:
 
               // @todo: srslte_ue_sl_sync_get_sfidx can not distingush between subframe 0 and 5,
@@ -1242,6 +1243,7 @@ sync::sfn_sync::~sfn_sync()
 
 void sync::sfn_sync::init(srslte_ue_sl_sync_t* ue_sync,
                           cf_t*             buffer[SRSLTE_MAX_PORTS],
+                          uint32_t          buffer_max_samples_,
                           srslte::log*      log_h,
                           uint32_t          nof_subframes)
 {
@@ -1252,6 +1254,7 @@ void sync::sfn_sync::init(srslte_ue_sl_sync_t* ue_sync,
   for (int p = 0; p < SRSLTE_MAX_PORTS; p++) {
     this->buffer[p] = buffer[p];
   }
+  buffer_max_samples = buffer_max_samples_;
 
   if (srslte_ue_sl_mib_init(&ue_mib, this->buffer, SRSLTE_MAX_PRB)) {
     Error("SYNC:  Initiating UE MIB decoder\n");
@@ -1278,7 +1281,7 @@ sync::sfn_sync::ret_code sync::sfn_sync::run_subframe(srslte_cell_t* cell, uint3
 {
 
   // srslte_ue_sl_sync_decode_ssss_on_track(ue_sync, true);
-  int ret = srslte_ue_sl_sync_zerocopy_multi(ue_sync, buffer);
+  int ret = srslte_ue_sl_sync_zerocopy_multi(ue_sync, buffer, buffer_max_samples);
   if (ret < 0) {
     Error("SYNC:  Error calling ue_sync_get_buffer.\n");
     return ERROR;

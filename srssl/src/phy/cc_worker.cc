@@ -102,13 +102,15 @@ cc_worker::cc_worker(uint32_t cc_idx, uint32_t max_prb, srsue::phy_common* phy, 
   this->phy    = phy;
   this->log_h  = log_h;
 
+  signal_buffer_max_samples = 3 * SRSLTE_SF_LEN_PRB(max_prb);
+
   for (uint32_t i = 0; i < phy->args->nof_rx_ant; i++) {
-    signal_buffer_rx[i] = (cf_t*)srslte_vec_malloc(3 * sizeof(cf_t) * SRSLTE_SF_LEN_PRB(max_prb));
+    signal_buffer_rx[i] = srslte_vec_cf_malloc(signal_buffer_max_samples);
     if (!signal_buffer_rx[i]) {
       Error("Allocating memory\n");
       return;
     }
-    signal_buffer_tx[i] = (cf_t*)srslte_vec_malloc(3 * sizeof(cf_t) * SRSLTE_SF_LEN_PRB(max_prb));
+    signal_buffer_tx[i] = srslte_vec_cf_malloc(signal_buffer_max_samples);
     if (!signal_buffer_tx[i]) {
       Error("Allocating memory\n");
       return;
@@ -237,6 +239,11 @@ bool cc_worker::set_cell(srslte_cell_t cell)
     cell_initiated = true;
   }
   return true;
+}
+
+uint32_t cc_worker::get_buffer_len()
+{
+  return signal_buffer_max_samples;
 }
 
 cf_t* cc_worker::get_rx_buffer(uint32_t antenna_idx)

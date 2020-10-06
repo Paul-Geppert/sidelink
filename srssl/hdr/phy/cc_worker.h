@@ -63,6 +63,7 @@ public:
   /* Functions used by main PHY thread */
   cf_t* get_rx_buffer(uint32_t antenna_idx);
   cf_t* get_tx_buffer(uint32_t antenna_idx);
+  uint32_t get_buffer_len();
 
   void  set_tti(uint32_t tti);
   void  set_cfo(float cfo);
@@ -158,8 +159,9 @@ private:
   uint32_t cc_idx;
   bool     pregen_enabled;
   bool     cell_initiated;
-  cf_t*    signal_buffer_rx[SRSLTE_MAX_PORTS];
-  cf_t*    signal_buffer_tx[SRSLTE_MAX_PORTS];
+  cf_t*    signal_buffer_rx[SRSLTE_MAX_PORTS] = {};
+  cf_t*    signal_buffer_tx[SRSLTE_MAX_PORTS] = {};
+  uint32_t signal_buffer_max_samples          = 0;
 
   /* Objects for DL */
   srslte_ue_dl_t     ue_dl;

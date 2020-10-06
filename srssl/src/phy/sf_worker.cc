@@ -154,6 +154,14 @@ cf_t* sf_worker::get_buffer(uint32_t carrier_idx, uint32_t antenna_idx)
   return cc_workers[carrier_idx]->get_rx_buffer(antenna_idx);
 }
 
+uint32_t sf_worker::get_buffer_len()
+{
+  if (cc_workers.empty()) {
+    return 0;
+  }
+  return cc_workers.at(0)->get_buffer_len();
+}
+
 void sf_worker::set_tti(uint32_t tti, uint32_t tx_worker_cnt)
 {
   for (uint32_t cc_idx = 0; cc_idx < cc_workers.size(); cc_idx++) {

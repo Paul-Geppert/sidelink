@@ -90,7 +90,6 @@ int srslte_ue_sl_tx_init(srslte_ue_sl_tx_t *q,
     srslte_ofdm_set_freq_shift(&q->fft, 0.5);
     srslte_ofdm_set_normalize(&q->fft, true);
 
-    q->out_buffer = out_buffer;
     q->normalize_en = true; 
 
     if (srslte_cfo_init(&q->cfo, MAX_SFLEN)) {
@@ -166,6 +165,7 @@ int srslte_ue_sl_tx_init(srslte_ue_sl_tx_t *q,
       perror("malloc");
       goto clean_exit; 
     }
+    q->out_buffer = out_buffer;
     q->signals_pregenerated = false; 
     ret = SRSLTE_SUCCESS;
   } else {

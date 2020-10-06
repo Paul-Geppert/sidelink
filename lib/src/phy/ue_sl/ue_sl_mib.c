@@ -59,6 +59,8 @@
 #include "srslte/phy/utils/debug.h"
 #include "srslte/phy/utils/vector.h"
 
+#define MIB_BUFFER_MAX_SAMPLES (3 * SRSLTE_SF_LEN_PRB(SRSLTE_UE_SL_MIB_NOF_PRB))
+
 int srslte_ue_sl_mib_init(srslte_ue_sl_mib_t * q,
                        cf_t *in_buffer[SRSLTE_MAX_PORTS],
                        uint32_t max_prb)
@@ -634,7 +636,7 @@ int srslte_ue_sl_mib_sync_decode(srslte_ue_sl_mib_sync_t * q,
     ret = SRSLTE_SUCCESS;
     do {
       mib_ret = SRSLTE_UE_SL_MIB_NOTFOUND; 
-      ret = srslte_ue_sl_sync_zerocopy_multi(&q->ue_sl_sync, q->sf_buffer);
+      ret = srslte_ue_sl_sync_zerocopy_multi(&q->ue_sl_sync, q->sf_buffer, MIB_BUFFER_MAX_SAMPLES);
       if (ret < 0) {
         fprintf(stderr, "Error calling srslte_ue_sync_work()\n");       
         return -1;

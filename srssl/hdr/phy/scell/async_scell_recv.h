@@ -56,6 +56,8 @@
 namespace srsue {
 namespace scell {
 
+#define SF_BUFFER_MAX_SAMPLES (5 * SRSLTE_SF_LEN_MAX)
+
 class async_scell_recv : private thread
 {
 public:

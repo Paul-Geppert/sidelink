@@ -362,7 +362,7 @@ void sig_int_handler(int signo)
 }
 
 cf_t *sf_buffer[SRSLTE_MAX_PORTS] = {NULL};
-
+uint32_t sf_buffer_max_num = 0;
 
 #ifndef DISABLE_RF
 int srslte_rf_recv_wrapper(void *h, cf_t *data[SRSLTE_MAX_PORTS], uint32_t nsamples, srslte_timestamp_t *t) {
@@ -590,8 +590,9 @@ int main(int argc, char **argv) {
 #endif
   }
 
+  sf_buffer_max_num = 3 * SRSLTE_SF_LEN_PRB(cell.nof_prb);
   for (int i=0;i<prog_args.rf_nof_rx_ant;i++) {
-    sf_buffer[i] = srslte_vec_malloc(3*sizeof(cf_t)*SRSLTE_SF_LEN_PRB(cell.nof_prb));
+    sf_buffer[i] = srslte_vec_cf_malloc(sf_buffer_max_num);
   }
   if (srslte_ue_sl_mib_init(&ue_sl_mib, sf_buffer, cell.nof_prb)) {
     fprintf(stderr, "Error initaiting UE MIB decoder\n");
@@ -705,7 +706,7 @@ int main(int argc, char **argv) {
       }
     }
 
-    ret = srslte_ue_sl_sync_zerocopy_multi(&ue_sl_sync, sf_buffer);
+    ret = srslte_ue_sl_sync_zerocopy_multi(&ue_sl_sync, sf_buffer, sf_buffer_max_num);
     if (ret < 0) {
       fprintf(stderr, "Error calling srslte_ue_sync_work()\n");
     }
