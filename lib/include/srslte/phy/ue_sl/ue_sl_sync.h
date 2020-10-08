@@ -147,6 +147,7 @@ typedef struct SRSLTE_API {
 
   srslte_cell_t cell; 
   uint32_t sf_idx;
+  bool is_sl_master;
       
   bool decode_ssss_on_track; 
 

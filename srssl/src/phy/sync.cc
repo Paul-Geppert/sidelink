@@ -402,10 +402,14 @@ bool sync::cell_create(phy_interface_rrc_lte::phy_cell_t *new_cell) {
   set_sampling_rate();
   //phy_state.run_sfn_sync();
 
-  // 
-  ue_sync.state = SF_SERVE;
+  // we are sync ref node
+  ue_sync.is_sl_master = true;
 
-  phy_state.force_serving();
+  // 
+  ue_sync.state = SF_FIND;
+
+  // phy_state.force_serving();
+  phy_state.run_sfn_sync();
 
 
   printf("Go serving in state: %s\n", phy_state.to_string());
@@ -493,6 +497,8 @@ void sync::run_thread()
             phy_state.state_exit();
             printf("MIB decoded going to CAMPING. cfo: %f\n", ue_sync.cfo_current_value);
             break;
+          case sfn_sync::SFN_MASTER_GPSDO_SYNC:
+            phy_state.force_serving();
           case sfn_sync::IDLE:
             break;
           default:
@@ -522,6 +528,12 @@ void sync::run_thread()
           // Primary Cell (PCell) Synchronization
           switch (srslte_ue_sl_sync_zerocopy_multi(&ue_sync, buffer[0], worker->get_buffer_len())) {
             case 1:
+
+              // update tti, when we run in GPS mode and a under-/overrun happend
+              if (ue_sync.is_sl_master && tti != ue_sync.sf_idx + 10*ue_sync.frame_number) {
+                printf("TTI mismatch %d vs %d (%d %d)\n",tti, ue_sync.sf_idx + 10*ue_sync.frame_number, ue_sync.sf_idx, ue_sync.frame_number);
+                tti = ue_sync.sf_idx + 10*ue_sync.frame_number;
+              }
 
               // @todo: srslte_ue_sl_sync_get_sfidx can not distingush between subframe 0 and 5,
               // we always force a docding of mib to ensure tti sync
@@ -610,8 +622,8 @@ void sync::run_thread()
               struct timeval rawtime;
               gettimeofday(&rawtime, NULL);
 
-              Debug("SYNC: Worker %d synchronized for sf_idx %d for tti %d fracs: %f delta: %f raw_delta: %ld\n",
-                    worker->get_id(), ue_sync.sf_idx, tti, rx_time.frac_secs, (rx_time.frac_secs - last_rx_time.frac_secs),
+              Debug("SYNC: Worker %d synchronized for sf_idx %d frame %d for tti %d fracs: %f delta: %f raw_delta: %ld\n",
+                    worker->get_id(), ue_sync.sf_idx, ue_sync.frame_number, tti, rx_time.frac_secs, (rx_time.frac_secs - last_rx_time.frac_secs),
                     (rawtime.tv_usec - last_raw_time.tv_usec));
 
               if ((rawtime.tv_usec - last_raw_time.tv_usec) > 5000) {
@@ -1279,6 +1291,16 @@ void sync::sfn_sync::reset()
 
 sync::sfn_sync::ret_code sync::sfn_sync::run_subframe(srslte_cell_t* cell, uint32_t* tti_cnt, bool sfidx_only)
 {
+  if (ue_sync->is_sl_master) {
+    // force a realignment of receive timers
+    ue_sync->state = SF_FIND;
+    srslte_ue_sl_sync_zerocopy_multi(ue_sync, buffer, buffer_max_samples);
+
+    *tti_cnt = ue_sync->sf_idx + ue_sync->frame_number*10;
+    printf("exit master find state with tti%d\n", *tti_cnt);
+
+    return SFN_MASTER_GPSDO_SYNC;
+  }
 
   // srslte_ue_sl_sync_decode_ssss_on_track(ue_sync, true);
   int ret = srslte_ue_sl_sync_zerocopy_multi(ue_sync, buffer, buffer_max_samples);

@@ -145,7 +145,7 @@ private:
   class sfn_sync
   {
   public:
-    typedef enum { IDLE, SFN_FOUND, SFX0_FOUND, SFN_NOFOUND, ERROR } ret_code;
+    typedef enum { IDLE, SFN_FOUND, SFX0_FOUND, SFN_NOFOUND, SFN_MASTER_GPSDO_SYNC, ERROR } ret_code;
     sfn_sync() = default;
     ~sfn_sync();
     void     init(srslte_ue_sl_sync_t* ue_sync,
