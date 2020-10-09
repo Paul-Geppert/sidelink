@@ -99,6 +99,11 @@ void sync::init(srslte::radio_interface_phy* _radio,
     return;
   }
 
+  if (worker_com->args->gps_sync_enable) {
+    printf("Enabled GPS as time synchronization source for main thread.\n");
+    ue_sync.mode = SYNC_MODE_GNSS;
+  }
+
   if (worker_com->args->dl_channel_args.enable) {
     channel_emulator = srslte::channel_ptr(new srslte::channel(worker_com->args->dl_channel_args, nof_rf_channels));
   }
@@ -530,7 +535,7 @@ void sync::run_thread()
             case 1:
 
               // update tti, when we run in GPS mode and a under-/overrun happend
-              if (ue_sync.is_sl_master && tti != ue_sync.sf_idx + 10*ue_sync.frame_number) {
+              if ((ue_sync.is_sl_master || ue_sync.mode == SYNC_MODE_GNSS) && tti != ue_sync.sf_idx + 10*ue_sync.frame_number) {
                 printf("TTI mismatch %d vs %d (%d %d)\n",tti, ue_sync.sf_idx + 10*ue_sync.frame_number, ue_sync.sf_idx, ue_sync.frame_number);
                 tti = ue_sync.sf_idx + 10*ue_sync.frame_number;
               }
@@ -554,7 +559,7 @@ void sync::run_thread()
 
 
               // Force decode MIB if required
-              if (force_camping_sfn_sync) {
+              if (force_camping_sfn_sync && ue_sync.mode == SYNC_MODE_PSS) {
                 uint32_t                 _tti = tti;
                 sync::sfn_sync::ret_code ret  = sfn_p.decode_mib(&cell, &_tti, buffer[0]);
 
@@ -737,8 +742,9 @@ void sync::run_thread()
 
     /* Radio overflow detected. If CAMPING, go through SFN sync again and when
      * SFN is found again go back to camping
+     * When we use GPS as time source, this will get fixed in srslte_ue_sl_sync_zerocopy_multi()
      */
-    if (!rrc_mutex.try_lock()) {
+    if (ue_sync.mode != SYNC_MODE_GNSS && !rrc_mutex.try_lock()) {
       if (radio_is_overflow) {
         // If we are coming back from an overflow
         if (radio_overflow_return) {

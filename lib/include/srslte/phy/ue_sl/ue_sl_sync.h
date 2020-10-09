@@ -308,6 +308,8 @@ SRSLTE_API int srslte_ue_sync_sl_run_find_gnss_mode(srslte_ue_sl_sync_t* q,
 
 SRSLTE_API int srslte_ue_sync_sl_run_track_gnss_mode(srslte_ue_sl_sync_t* q, cf_t* input_buffer[SRSLTE_MAX_PORTS]);
 
+SRSLTE_API int srslte_ue_sync_sl_run_align_gnss_mode(srslte_ue_sl_sync_t* q, cf_t* input_buffer[SRSLTE_MAX_PORTS]);
+
 SRSLTE_API int srslte_ue_sync_sl_set_tti_from_timestamp(srslte_ue_sl_sync_t* q, srslte_timestamp_t* rx_timestamp);
 
 #endif // SRSLTE_UE_SL_SYNC_H

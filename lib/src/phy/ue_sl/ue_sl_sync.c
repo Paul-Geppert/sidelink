@@ -884,6 +884,9 @@ int srslte_ue_sl_sync_zerocopy_multi(srslte_ue_sl_sync_t *q, cf_t *input_buffer[
           } else {
             srslte_ue_sync_sl_run_track_gnss_mode(q, input_buffer);
           }
+
+          srslte_ue_sync_sl_run_align_gnss_mode(q, input_buffer);
+
           break;
         case SF_SERVE:
           // in this state we are the master and there is no need for sync find/tracking
@@ -896,40 +899,7 @@ int srslte_ue_sl_sync_zerocopy_multi(srslte_ue_sl_sync_t *q, cf_t *input_buffer[
             q->frame_number = (q->frame_number + 1) % 1024;
           }
 
-          // check if we are still aligned to GPS on ms basis
-          if (1) {//} (q->frame_number % 100) == 0 && q->sf_idx == 0) {
-            uint32_t ns_offset = (uint64_t)(q->last_timestamp.frac_secs * 1E9) % 1000000;
-            // printf("-last_timestamp: %.42g\n", q->last_timestamp.frac_secs);
-
-            //one sample is roughly 86 ns
-            if (ns_offset <= 90) {
-              // this is fine
-
-            } else if (ns_offset>90 && ns_offset < 1000) {
-              // we sample to fast, drop samples during next receive
-              q->next_rf_sample_offset = -1;
-              printf("-GPS-Correction: %.32g ns offset %d\n", q->last_timestamp.frac_secs, ns_offset);
-            
-            } else if (ns_offset>998999 && ns_offset < (1000000-0)) {
-              // we sample too slow, get one additional sample
-              srslte_timestamp_t dummy_ts;
-              q->recv_callback(q->stream, dummy_offset_buffer, 1, &dummy_ts);
-              printf("+GPS-Correction: %.32g ns offset %d\n", q->last_timestamp.frac_secs, ns_offset);
-            
-            } else {
-              // receive x samples to re-align to ms interval
-              int drop_samples = q->frame_len - (long int)ns_offset * q->frame_len / 1000000;
-              q->recv_callback(q->stream, dummy_offset_buffer, drop_samples, NULL);
-
-              printf("GPS unaligned: +%d frac: %.32g ns offset %d\n", drop_samples, q->last_timestamp.frac_secs, ns_offset);
-              INFO("GPS unaligned: +%d frac: %.32g ns offset %d\n", drop_samples, q->last_timestamp.frac_secs, ns_offset);
-
-              // get another subframe and update frame numbers
-              receive_samples(q, input_buffer, max_num_samples);
-              srslte_ue_sync_sl_set_tti_from_timestamp(q, &q->last_timestamp);
-
-            }
-          }
+          srslte_ue_sync_sl_run_align_gnss_mode(q, input_buffer);
 
           INFO("SYNC SERVE: sf_idx=%d, ret=%d, next_state=%d\n", q->sf_idx, ret, q->state);
           break;
@@ -1114,6 +1084,58 @@ int srslte_ue_sync_sl_run_track_gnss_mode(srslte_ue_sl_sync_t* q, cf_t* input_bu
 
   return 1; ///< 1 means subframe in sync
 }
+
+
+
+/**
+ * @brief The align function in GNSS mode ensures, that subframes, always start on milli seconds
+ * 
+ * It has been observed, that the receive timestamp drifts away over time, so try to keep
+ * them aligned by either dropping or preserving single samples.
+ * Here we also correct arbitrary time offsets, which occur by over/underruns.
+ */
+int srslte_ue_sync_sl_run_align_gnss_mode(srslte_ue_sl_sync_t* q, cf_t* input_buffer[SRSLTE_MAX_PORTS])
+{
+
+  if (q->mode == SYNC_MODE_GNSS) {
+    uint32_t ns_offset = (uint64_t)(q->last_timestamp.frac_secs * 1E9) % 1000000;
+    // printf("-last_timestamp: %.42g\n", q->last_timestamp.frac_secs);
+
+    //one sample is roughly 86 ns
+    if (ns_offset <= 90) {
+      // this is fine
+
+    } else if (ns_offset>90 && ns_offset < 1000) {
+      // we sample to fast, drop samples during next receive
+      q->next_rf_sample_offset = -1;
+      printf("-GPS-Correction: %.32g ns offset %d\n", q->last_timestamp.frac_secs, ns_offset);
+    
+    } else if (ns_offset>998999 && ns_offset < (1000000-0)) {
+      // we sample too slow, get one additional sample
+      srslte_timestamp_t dummy_ts;
+      q->recv_callback(q->stream, dummy_offset_buffer, 1, &dummy_ts);
+      printf("+GPS-Correction: %.32g ns offset %d\n", q->last_timestamp.frac_secs, ns_offset);
+    
+    } else {
+      // receive x samples to re-align to ms interval
+      int drop_samples = q->frame_len - (long int)ns_offset * q->frame_len / 1000000;
+      q->recv_callback(q->stream, dummy_offset_buffer, drop_samples, NULL);
+
+      printf("GPS unaligned: +%d frac: %.32g ns offset %d\n", drop_samples, q->last_timestamp.frac_secs, ns_offset);
+      INFO("GPS unaligned: +%d frac: %.32g ns offset %d\n", drop_samples, q->last_timestamp.frac_secs, ns_offset);
+
+      // get another subframe and update frame numbers
+      receive_samples(q, input_buffer, q->frame_len);
+      srslte_ue_sync_sl_set_tti_from_timestamp(q, &q->last_timestamp);
+
+    }
+  }
+
+  INFO("SYNC TRACK: sfn=%d, sf_idx=%d, next_state=%d\n", q->frame_number, q->sf_idx, q->state);
+
+  return 1; ///< 1 means subframe in sync
+}
+
 
 /** Calculate TTI for UEs that are synced using GNSS time reference (TS 36.331 Sec. 5.10.14)
  *

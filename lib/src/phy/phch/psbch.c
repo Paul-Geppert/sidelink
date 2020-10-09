@@ -626,7 +626,6 @@ int srslte_psbch_decode(srslte_psbch_t *q, cf_t *subframe_symbols, cf_t *ce, flo
       memcpy(bch_payload, q->data, SRSLTE_SL_BCH_PAYLOAD_LEN*sizeof(uint8_t));
       return 1;
     }
-    printf("Failed to decoded PSBCH.\n");
   }
 
   return SRSLTE_ERROR;

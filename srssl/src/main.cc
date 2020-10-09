@@ -352,6 +352,10 @@ static int parse_args(all_args_t* args, int argc, char* argv[])
       bpo::value<bool>(&args->phy.sidelink_master)->default_value(false),
       "Sidelink Master")
 
+    ("expert.phy.gps_sync_enable",
+      bpo::value<bool>(&args->phy.gps_sync_enable)->default_value(false),
+      "Use GPS a main time sync source")
+
     ("phy.pdsch_8bit_decoder",
        bpo::value<bool>(&args->phy.pdsch_8bit_decoder)->default_value(false),
        "Use 8-bit for LLR representation and turbo decoder trellis computation (Experimental)")

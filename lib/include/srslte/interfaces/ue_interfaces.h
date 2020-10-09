@@ -777,6 +777,7 @@ typedef struct {
   uint32_t      intra_freq_meas_period_ms;
   bool          pregenerate_signals;
   float         force_ul_amplitude;
+  bool          gps_sync_enable;
 
   int32_t      sidelink_id;
   bool         sidelink_master;
