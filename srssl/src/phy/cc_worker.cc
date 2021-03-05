@@ -335,6 +335,20 @@ bool cc_worker::get_dl_pending_grant(uint32_t cc_idx, srslte_dci_dl_t* dl_dci)
  * Sidelink Functions
  *
  */
+// this is the time in seconds
+
+
+void cc_worker::set_receive_time(srslte_timestamp_t tx_time)
+{
+  rx_time = tx_time;
+}
+
+// this is the rx_gain
+float curr_rx_gain;
+void cc_worker::set_receiver_gain(float rx_gain_from_sf_worker)
+{
+  curr_rx_gain = rx_gain_from_sf_worker;
+}
 
 bool cc_worker::decode_pscch_dl(srsue::mac_interface_phy_lte::mac_grant_dl_t* grant)
 {
@@ -849,11 +863,28 @@ bool cc_worker::work_sl_rx()
       float snr = srslte_chest_sl_get_snr_db(&ue_sl.chest);
       float rsrp = 10*log10(ue_sl.chest.pilot_power) - 10*log10(ue_sl.fft.symbol_sz * ue_sl.fft.symbol_sz);
 
+      // calculate noise
+      float noise_power = srslte_chest_sl_get_noise_estimate(&ue_sl.chest);
+
+      // calculate for timestemp
+      time_t rx_full_secs = rx_time.full_secs;
+      float  rx_frac_secs = float(rx_time.frac_secs);
+
+      // std::cout << "time is .. " << rx_frac_secs << "\n";
+
+      // calculate the gain 
+      float rx_gain = curr_rx_gain;
+
       // following values are dumped into PCAP
       dl_mac_grant.sl_lte_tti = tti;
       dl_mac_grant.sl_snr = snr;
       dl_mac_grant.sl_rsrp = rsrp;
       dl_mac_grant.sl_rssi = rssi_dBm;
+      dl_mac_grant.sl_rx_full_secs = rx_full_secs;
+      dl_mac_grant.sl_rx_frac_secs = rx_frac_secs;
+      dl_mac_grant.sl_noise_power  = noise_power;
+      dl_mac_grant.sl_rx_gain  = rx_gain;
+
 
       int ue_id = srslte_repo_get_t_SL_k(&phy->ue_repo, tti % 10240);
 

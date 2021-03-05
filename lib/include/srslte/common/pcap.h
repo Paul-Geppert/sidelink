@@ -124,6 +124,11 @@ typedef struct MAC_Context_Info_t {
     float sl_snr;
     float sl_rsrp;
     float sl_rssi;
+    float  sl_noise_power;
+    time_t sl_rx_full_secs;
+    float  sl_rx_frac_secs;
+    float sl_rx_gain;
+
 } MAC_Context_Info_t;
 
 /* Context information for every NAS PDU that will be logged */
@@ -294,6 +299,15 @@ inline int LTE_PCAP_MAC_WritePDU(FILE *fd, MAC_Context_Info_t *context,
     offset += 4;
     memcpy(context_header+offset, &context->sl_rssi, 4);
     offset += 4;
+    memcpy(context_header + offset, &context->sl_noise_power, 4);
+    offset += 4;
+    memcpy(context_header + offset, &context->sl_rx_full_secs, 8);
+    offset += 8;
+    memcpy(context_header + offset, &context->sl_rx_frac_secs, 4);
+    offset += 4;
+    memcpy(context_header + offset, &context->sl_rx_gain, 4);
+    offset += 4;
+
 
 
     /* Data tag immediately preceding PDU */

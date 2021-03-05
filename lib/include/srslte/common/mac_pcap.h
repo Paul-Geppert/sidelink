@@ -64,7 +64,7 @@ public:
 
   void write_ul_crnti(uint8_t *pdu, uint32_t pdu_len_bytes, uint16_t crnti, uint32_t reTX, uint32_t tti);
   void write_dl_crnti(uint8_t *pdu, uint32_t pdu_len_bytes, uint16_t crnti, bool crc_ok, uint32_t tti);
-  void write_dl_crnti(uint8_t *pdu, uint32_t pdu_len_bytes, uint16_t crnti, bool crc_ok, uint32_t tti, float snr, float rsrp, float rssi);
+  void write_dl_crnti(uint8_t *pdu, uint32_t pdu_len_bytes, uint16_t crnti, bool crc_ok, uint32_t tti, float snr, float rsrp, float rssi, float noise_power, time_t rx_full_secs, float rx_frac_secs, float rx_gain);
   void write_dl_ranti(uint8_t *pdu, uint32_t pdu_len_bytes, uint16_t ranti, bool crc_ok, uint32_t tti);
 
   // SI and BCH only for DL
@@ -83,7 +83,7 @@ private:
                               uint16_t crnti_, uint8_t direction, uint8_t rnti_type);
   void pack_and_write(uint8_t* pdu, uint32_t pdu_len_bytes, uint32_t reTX, bool crc_ok, uint32_t tti,
                               uint16_t crnti_, uint8_t direction, uint8_t rnti_type,
-                              float snr, float rsrp, float rssi);                              
+                              float snr, float rsrp, float rssi, float noise_power, time_t rx_full_secs, float rx_frac_secs, float rx_gain);                              
 };
 
 } // namespace srslte

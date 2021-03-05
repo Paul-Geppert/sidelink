@@ -413,7 +413,7 @@ void dl_harq_entity::dl_harq_process::dl_tb_process::tb_decoded(mac_interface_ph
       } else {
         if (harq_entity->pcap) {
           harq_entity->pcap->write_dl_crnti(payload_buffer_ptr, cur_grant.tb[tid].tbs, cur_grant.rnti, ack, grant.sl_lte_tti,
-                                            grant.sl_snr, grant.sl_rsrp, grant.sl_rssi);
+                                            grant.sl_snr, grant.sl_rsrp, grant.sl_rssi, grant.sl_noise_power,grant.sl_rx_full_secs,grant.sl_rx_frac_secs, grant.sl_rx_gain);
         }
         if (cur_grant.rnti == harq_entity->rntis->temp_rnti) {
           Debug("Delivering PDU=%d bytes to Dissassemble and Demux unit (Temporal C-RNTI)\n", cur_grant.tb[tid].tbs);

@@ -407,6 +407,11 @@ public:
     float    sl_snr;
     float    sl_rssi;
     float    sl_rsrp;
+    float    sl_noise_power;
+    time_t   sl_rx_full_secs;
+    float    sl_rx_frac_secs;
+    float    sl_rx_gain;
+
   } mac_grant_dl_t;
 
   typedef struct {

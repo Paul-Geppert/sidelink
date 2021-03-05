@@ -92,6 +92,8 @@ public:
 
   void update_measurements();
   bool dump_subframe();
+  void set_receive_time(srslte_timestamp_t tx_time);
+  void set_receiver_gain(float rx_gain_from_sf_worker);
 
 private:
   void dl_phy_to_mac_grant(srslte_pdsch_grant_t*                  phy_grant,
@@ -180,11 +182,14 @@ private:
   srslte_ue_sl_tx_t ue_sl_tx;
 
   /* SL */
+  srslte_timestamp_t rx_time;
   static uint32_t sps_rsrp_read_cnt;
   static uint32_t sps_rssi_read_cnt;
   bool last_decoding_successful;
   bool last_decoding_successful_high_rsrp;
   float agc_max_value;
+  // this is the rx_gain
+  float curr_rx_gain;
 
   // Metrics
   dl_metrics_t dl_metrics;

@@ -104,7 +104,7 @@ void mac_pcap::pack_and_write(uint8_t* pdu, uint32_t pdu_len_bytes, uint32_t reT
 
 void mac_pcap::pack_and_write(uint8_t* pdu, uint32_t pdu_len_bytes, uint32_t reTX, bool crc_ok, uint32_t tti, 
                               uint16_t crnti, uint8_t direction, uint8_t rnti_type,
-                              float snr, float rsrp, float rssi)
+                              float snr, float rsrp, float rssi, float noise_power, time_t rx_full_secs, float rx_frac_secs, float rx_gain)
 {
   if (enable_write) {
     MAC_Context_Info_t  context =
@@ -120,6 +120,10 @@ void mac_pcap::pack_and_write(uint8_t* pdu, uint32_t pdu_len_bytes, uint32_t reT
     context.sl_snr = snr;
     context.sl_rsrp = rsrp;
     context.sl_rssi = rssi;
+    context.sl_noise_power  = noise_power;
+    context.sl_rx_full_secs = rx_full_secs;
+    context.sl_rx_frac_secs = rx_frac_secs;
+    context.sl_rx_gain = rx_gain;
     
     if (pdu) {
       LTE_PCAP_MAC_WritePDU(pcap_file, &context, pdu, pdu_len_bytes);
@@ -128,9 +132,9 @@ void mac_pcap::pack_and_write(uint8_t* pdu, uint32_t pdu_len_bytes, uint32_t reT
 }
 
 
-void mac_pcap::write_dl_crnti(uint8_t* pdu, uint32_t pdu_len_bytes, uint16_t rnti, bool crc_ok, uint32_t tti, float snr, float rsrp, float rssi)
+void mac_pcap::write_dl_crnti(uint8_t* pdu, uint32_t pdu_len_bytes, uint16_t rnti, bool crc_ok, uint32_t tti, float snr, float rsrp, float rssi, float noise_power, time_t rx_full_secs, float rx_frac_secs, float rx_gain)
 {
-  pack_and_write(pdu, pdu_len_bytes, 0, crc_ok, tti, rnti, DIRECTION_DOWNLINK, C_RNTI, snr, rsrp, rssi);
+  pack_and_write(pdu, pdu_len_bytes, 0, crc_ok, tti, rnti, DIRECTION_DOWNLINK, C_RNTI, snr, rsrp, rssi, noise_power, rx_full_secs, rx_frac_secs, rx_gain);
 }
 void mac_pcap::write_dl_crnti(uint8_t* pdu, uint32_t pdu_len_bytes, uint16_t rnti, bool crc_ok, uint32_t tti)
 {

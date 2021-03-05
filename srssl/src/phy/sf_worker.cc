@@ -187,6 +187,9 @@ void sf_worker::set_tx_time(uint32_t radio_idx, srslte_timestamp_t tx_time, int 
 {
   this->next_offset[radio_idx] = next_offset;
   this->tx_time[radio_idx]     = tx_time;
+  //get the time 
+  tx_time.full_secs = tx_time.full_secs - 0.004; // as tx_time is 4ms smaller then rx time 
+  cc_workers[0]->set_receive_time(tx_time);
 }
 
 void sf_worker::set_prach(cf_t* prach_ptr, float prach_power)
@@ -376,6 +379,8 @@ void sf_worker::reset_uci(srslte_uci_data_t* uci_data)
 
 void sf_worker::update_measurements()
 {
+  
+  cc_workers[0]->set_receiver_gain(phy->get_radio()->get_rx_gain(0));
   /* Only worker 0 reads the RSSI sensor every ~1-nof_cores s */
   if (get_id() == 0) {
 
