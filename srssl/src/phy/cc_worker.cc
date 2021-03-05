@@ -662,6 +662,7 @@ bool cc_worker::work_sl_rx()
 
   uint32_t tti = sf_cfg_dl.tti;
   float rssi_sps = 0.0f;
+  float rssi_dBm = 0.0f;
 
   last_decoding_successful_high_rsrp = false;
 
@@ -719,6 +720,8 @@ bool cc_worker::work_sl_rx()
 
     ue_sl.pssch.sps_rssi[sps_rssi_read_cnt] = rssi_sps;
     phy->inst_sps_rssi[sps_rssi_read_cnt]   = 10 * log10(rssi_sps * 1000); // in dBm.
+    rssi_dBm = 10 * log10(rssi_sps) - 10*log10(ue_sl.fft.symbol_sz * ue_sl.fft.symbol_sz / ue_sl.fft.nof_re); //29.93f; // 10*log10(768*768/600)
+    
     // phy->inst_sps_rssi = 10 * log10(rssi_sps * 1000); // in dBm.
 
 
@@ -728,12 +731,13 @@ bool cc_worker::work_sl_rx()
     // }
 
     // save average RSSI
-    phy->sl_rssi = SRSLTE_VEC_EMA(phy->inst_sps_rssi[sps_rssi_read_cnt], phy->sl_rssi, 0.1);
+    phy->sl_rssi = SRSLTE_VEC_EMA(rssi_dBm, phy->sl_rssi, 0.1);
 
     sps_rssi_read_cnt++;
     if (sps_rssi_read_cnt == 1000)
       sps_rssi_read_cnt = 0;
 
+    // @todo: check if are save to user rssi_dBm here
     phy->sensing_sps->addAverageSRSSI(tti,10 * log10(rssi_sps * 1000));
 
     // for sensing-based SPS we need to measure the S-RSSI per subchannel
@@ -763,7 +767,7 @@ bool cc_worker::work_sl_rx()
 
     // calculate snr psbch
     float snr = srslte_chest_sl_get_snr_db(&ue_sl.chest);
-    float rsrp = 10*log10(ue_sl.chest.pilot_power) + 30;
+    float rsrp = 10*log10(ue_sl.chest.pilot_power) - 10*log10(ue_sl.fft.symbol_sz * ue_sl.fft.symbol_sz);
 
     phy->snr_psbch = SRSLTE_VEC_EMA(snr, phy->snr_psbch, 0.1);
     phy->rsrp_psbch = SRSLTE_VEC_EMA(rsrp, phy->rsrp_psbch, 0.1);
@@ -794,8 +798,8 @@ bool cc_worker::work_sl_rx()
     }
   } else {
     // report large RSSI values, except for broadcast subframes
-    if( 10 * log10(rssi_sps * 1000) - phy->sl_rssi > 15) {
-      printf("TTI: %4d detected large RSSI value of %f (avg: %f)\n", tti, 10 * log10(rssi_sps * 1000), phy->sl_rssi);
+    if( rssi_dBm - phy->sl_rssi > 15) {
+      printf("TTI: %4d detected large RSSI value of %f (avg: %f)\n", tti, rssi_dBm, phy->sl_rssi);
       last_decoding_successful_high_rsrp = true;
     }
   }
@@ -843,13 +847,13 @@ bool cc_worker::work_sl_rx()
       
       // calculate snr for possibly decoded pssch
       float snr = srslte_chest_sl_get_snr_db(&ue_sl.chest);
-      float rsrp = 10*log10(ue_sl.chest.pilot_power) + 30;
+      float rsrp = 10*log10(ue_sl.chest.pilot_power) - 10*log10(ue_sl.fft.symbol_sz * ue_sl.fft.symbol_sz);
 
       // following values are dumped into PCAP
       dl_mac_grant.sl_lte_tti = tti;
       dl_mac_grant.sl_snr = snr;
       dl_mac_grant.sl_rsrp = rsrp;
-      dl_mac_grant.sl_rssi = rssi_sps;
+      dl_mac_grant.sl_rssi = rssi_dBm;
 
       int ue_id = srslte_repo_get_t_SL_k(&phy->ue_repo, tti % 10240);
 
