@@ -411,6 +411,7 @@ public:
     time_t   sl_rx_full_secs;
     float    sl_rx_frac_secs;
     float    sl_rx_gain;
+    uint16_t sl_sci_frl; // maybe we should include the whole SCI-1
 
   } mac_grant_dl_t;
 

@@ -128,6 +128,7 @@ typedef struct MAC_Context_Info_t {
     time_t sl_rx_full_secs;
     float  sl_rx_frac_secs;
     float sl_rx_gain;
+    uint16_t sl_sci_frl;
 
 } MAC_Context_Info_t;
 
@@ -307,7 +308,8 @@ inline int LTE_PCAP_MAC_WritePDU(FILE *fd, MAC_Context_Info_t *context,
     offset += 4;
     memcpy(context_header + offset, &context->sl_rx_gain, 4);
     offset += 4;
-
+    memcpy(context_header + offset, &context->sl_sci_frl, sizeof(context->sl_sci_frl));
+    offset += sizeof(context->sl_sci_frl);
 
 
     /* Data tag immediately preceding PDU */

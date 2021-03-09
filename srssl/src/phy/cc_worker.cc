@@ -344,7 +344,6 @@ void cc_worker::set_receive_time(srslte_timestamp_t tx_time)
 }
 
 // this is the rx_gain
-float curr_rx_gain;
 void cc_worker::set_receiver_gain(float rx_gain_from_sf_worker)
 {
   curr_rx_gain = rx_gain_from_sf_worker;
@@ -870,11 +869,6 @@ bool cc_worker::work_sl_rx()
       time_t rx_full_secs = rx_time.full_secs;
       float  rx_frac_secs = float(rx_time.frac_secs);
 
-      // std::cout << "time is .. " << rx_frac_secs << "\n";
-
-      // calculate the gain 
-      float rx_gain = curr_rx_gain;
-
       // following values are dumped into PCAP
       dl_mac_grant.sl_lte_tti = tti;
       dl_mac_grant.sl_snr = snr;
@@ -883,8 +877,10 @@ bool cc_worker::work_sl_rx()
       dl_mac_grant.sl_rx_full_secs = rx_full_secs;
       dl_mac_grant.sl_rx_frac_secs = rx_frac_secs;
       dl_mac_grant.sl_noise_power  = noise_power;
-      dl_mac_grant.sl_rx_gain  = rx_gain;
+      dl_mac_grant.sl_rx_gain  = curr_rx_gain;
 
+      // combine extracted FRL into one variable
+      dl_mac_grant.sl_sci_frl = (pending_sl_grant[0].sl_dci.frl_L_subCH << 8) | (pending_sl_grant[0].sl_dci.frl_n_subCH & 0xFF);
 
       int ue_id = srslte_repo_get_t_SL_k(&phy->ue_repo, tti % 10240);
 
