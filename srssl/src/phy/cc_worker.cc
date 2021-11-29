@@ -812,7 +812,7 @@ bool cc_worker::work_sl_rx()
   } else {
     // report large RSSI values, except for broadcast subframes
     if( rssi_dBm - phy->sl_rssi > 15) {
-      printf("TTI: %4d detected large RSSI value of %f (avg: %f)\n", tti, rssi_dBm, phy->sl_rssi);
+      // printf("TTI: %4d detected large RSSI value of %f (avg: %f)\n", tti, rssi_dBm, phy->sl_rssi);
       last_decoding_successful_high_rsrp = true;
     }
   }

@@ -524,8 +524,8 @@ static void sig_int_handler(int)
 {
   sigcnt++;
   running = false;
-  cout << "Stopping srsUE... Press Ctrl+C " << (10 - sigcnt) << " more times to force stop" << endl;
-  if (sigcnt >= 10) {
+  cout << "Stopping srsUE... Press Ctrl+C " << (1 - sigcnt) << " more times to force stop" << endl;
+  if (sigcnt >= 1) {
     exit(-1);
   }
 }
