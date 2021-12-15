@@ -137,3 +137,19 @@ Any field can be set independent or all at once. To set the resource pool config
 ```
 curl -X PUT -H "Content-Type: application/json" -d '{"numSubchannel_r14":10,"sizeSubchannel_r14":5,"sl_OffsetIndicator_r14":0,"sl_Subframe_r14_len":20,"startRB_PSCCH_Pool_r14":0,"startRB_Subchannel_r14":0}' localhost:13001/phy/repo
 ```
+
+Original source
+---------------
+
+[https://gitlab.hhi.fraunhofer.de/pilz/sidelink.git](https://gitlab.hhi.fraunhofer.de/pilz/sidelink.git)
+
+Docker
+------
+
+Build: `docker build -t sidelink_hhi .`
+
+Replace with correct device paths for the next commands:
+
+Execute master: `docker run --rm -d -it --name cv2x_m --device /dev/bus/usb/002/006 --privileged sidelink_hhi /sidelink/start_client_log.sh`
+
+Execute client: `docker run --rm -d -it --name cv2x_c --device /dev/bus/usb/002/007 --privileged sidelink_hhi /sidelink/start_master.sh`
