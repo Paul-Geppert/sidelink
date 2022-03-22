@@ -529,20 +529,20 @@ int srslte_ue_sl_pscch_decode(srslte_ue_sl_mib_t * q,
       continue;
     }
 
-    printf("DECODED PSCCH  N_X_ID: %x on tti %d t_SL_k: %d (rbp:%d) SCI-1: frl: 0x%x(n: %d L: %d) gap: %d mcs: %d rti: %d\n",
-            crc_rem, 0,
-            srslte_repo_get_t_SL_k(repo, 0),
-            rbp,
-            sci.frl,
-            sci.frl_n_subCH,
-            sci.frl_L_subCH,
-            sci.time_gap,
-            sci.mcs.idx,
-            sci.rti);
+    // printf("DECODED PSCCH  N_X_ID: %x on tti %d t_SL_k: %d (rbp:%d) SCI-1: frl: 0x%x(n: %d L: %d) gap: %d mcs: %d rti: %d\n",
+    //         crc_rem, 0,
+    //         srslte_repo_get_t_SL_k(repo, 0),
+    //         rbp,
+    //         sci.frl,
+    //         sci.frl_n_subCH,
+    //         sci.frl_L_subCH,
+    //         sci.time_gap,
+    //         sci.mcs.idx,
+    //         sci.rti);
 
-    printf("DECODED PSCCH  N_X_ID: %x  n0: %f\n", crc_rem, srslte_chest_sl_get_noise_estimate(&q->chest));
+    // printf("DECODED PSCCH  N_X_ID: %x  n0: %f\n", crc_rem, srslte_chest_sl_get_noise_estimate(&q->chest));
 
-    printf("RSSI | t-domain: %f dBm | f-domain: %f dBm\n", rssi_time, rssi_freq);
+    // printf("RSSI | t-domain: %f dBm | f-domain: %f dBm\n", rssi_time, rssi_freq);
 
     // set parameters for pssch
     q->pssch.n_X_ID = crc_rem;

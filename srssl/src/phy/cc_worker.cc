@@ -398,17 +398,17 @@ bool cc_worker::decode_pscch_dl(srsue::mac_interface_phy_lte::mac_grant_dl_t* gr
       continue;
     }
 
-    printf("DECODED PSCCH  N_X_ID: %x on tti %d t_SL_k: %d (rbp:%d) SCI-1: frl: 0x%x(n: %d L: %d) rri: %d gap: %d mcs: %d rti: %d\n",
-            crc_rem, tti,
-            srslte_repo_get_t_SL_k(&phy->ue_repo, tti),
-            rbp,
-            sci.frl,
-            sci.frl_n_subCH,
-            sci.frl_L_subCH,
-            sci.resource_reservation,
-            sci.time_gap,
-            sci.mcs.idx,
-            sci.rti);
+    // printf("DECODED PSCCH  N_X_ID: %x on tti %d t_SL_k: %d (rbp:%d) SCI-1: frl: 0x%x(n: %d L: %d) rri: %d gap: %d mcs: %d rti: %d\n",
+    //         crc_rem, tti,
+    //         srslte_repo_get_t_SL_k(&phy->ue_repo, tti),
+    //         rbp,
+    //         sci.frl,
+    //         sci.frl_n_subCH,
+    //         sci.frl_L_subCH,
+    //         sci.resource_reservation,
+    //         sci.time_gap,
+    //         sci.mcs.idx,
+    //         sci.rti);
 
     if(prb_offset != (uint32_t)phy->ue_repo.rp.startRB_Subchannel_r14 + sci.frl_n_subCH*phy->ue_repo.rp.sizeSubchannel_r14) {
       printf("Detected different Ressourcepool configurations.\n");
@@ -899,8 +899,8 @@ bool cc_worker::work_sl_rx()
         phy->rsrp_pssch_per_ue[ue_id] = SRSLTE_VEC_EMA(rsrp, phy->rsrp_pssch_per_ue[ue_id], 0.1);
         //printf("moving snr[%d]: %f\n", ue_id, phy->snr_pssch_per_ue[ue_id]);
 
-        printf("Current SNR: %f (EMA: %f) RSRP: %f (EMA: %f) for ue_id %d\n",
-                snr, phy->snr_pssch_per_ue[ue_id], rsrp, phy->rsrp_pssch_per_ue[ue_id], ue_id);
+        // printf("Current SNR: %f (EMA: %f) RSRP: %f (EMA: %f) for ue_id %d\n",
+        //         snr, phy->snr_pssch_per_ue[ue_id], rsrp, phy->rsrp_pssch_per_ue[ue_id], ue_id);
 
         // if(phy->args->sidelink_id == ue_id) {
         //   printf("decoded data in my own time slot????? tti: %d\n", tti);
@@ -1187,11 +1187,11 @@ bool cc_worker::work_sl_tx() {
       float i_bits = sci.mcs.tbs + 24;
 
       // effective channel code rate 3GPP 36.213 7.1.7.2
-      printf("TBS: %d PRB: %d Channel-Bits: %.0f Coderate: %f\n",
-              sci.mcs.tbs,
-              (L_subch*phy->ue_repo.rp.sizeSubchannel_r14 - 2),
-              c_bits,
-              i_bits/c_bits);
+      // printf("TBS: %d PRB: %d Channel-Bits: %.0f Coderate: %f\n",
+      //         sci.mcs.tbs,
+      //         (L_subch*phy->ue_repo.rp.sizeSubchannel_r14 - 2),
+      //         c_bits,
+      //         i_bits/c_bits);
       
       // select random between valid values
       n_subCH_start = rand() % (phy->ue_repo.rp.numSubchannel_r14 - L_subch + 1);
@@ -1205,18 +1205,18 @@ bool cc_worker::work_sl_tx() {
 
       srslte_repo_sci_encode(&phy->ue_repo, sci_buffer, &sci);
 
-      printf("TTI: %d t_SL_k: %d ENCODED SCI-1: prio: %d frl(%d): 0x%x(n: %d L: %d) rri: %d gap: %d mcs: %d rti: %d\n",
-              tti,
-              t_SL_k,
-              sci.priority,
-              srslte_repo_frl_len(&phy->ue_repo),
-              sci.frl,
-              sci.frl_n_subCH,
-              sci.frl_L_subCH,
-              sci.resource_reservation,
-              sci.time_gap,
-              sci.mcs.idx,
-              sci.rti);
+      // printf("TTI: %d t_SL_k: %d ENCODED SCI-1: prio: %d frl(%d): 0x%x(n: %d L: %d) rri: %d gap: %d mcs: %d rti: %d\n",
+      //         tti,
+      //         t_SL_k,
+      //         sci.priority,
+      //         srslte_repo_frl_len(&phy->ue_repo),
+      //         sci.frl,
+      //         sci.frl_n_subCH,
+      //         sci.frl_L_subCH,
+      //         sci.resource_reservation,
+      //         sci.time_gap,
+      //         sci.mcs.idx,
+      //         sci.rti);
 
       cf_t *ta[2];
       ta[0] = ue_sl_tx.sf_symbols;
@@ -1238,7 +1238,7 @@ bool cc_worker::work_sl_tx() {
       uint8_t *x = &sci_buffer[SRSLTE_SCI1_MAX_BITS];
       uint16_t pscch_crc = (uint16_t) srslte_bit_pack(&x, 16);
 
-      srslte_vec_fprint_hex(stdout, sci_buffer, SRSLTE_SCI1_MAX_BITS + 16);
+      // srslte_vec_fprint_hex(stdout, sci_buffer, SRSLTE_SCI1_MAX_BITS + 16);
       //printf("CRC: %x\n", pscch_crc);
 
 

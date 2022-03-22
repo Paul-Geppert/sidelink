@@ -652,9 +652,9 @@ int srslte_psss_find_psss(srslte_psss_t *q, const cf_t *input, float *corr_peak_
       // printf("\t next Peak pos is %d with value %f\n", next_peak, q->conv_output_abs[next_peak]);
 
       if(abs(abs(corr_peak_pos - next_peak) - (q->fft_size + SRSLTE_CP_LEN((q->fft_size),SRSLTE_CP_NORM_LEN))) > 5){
-        printf("PSSS peaks are too far apart: [%d] = %f [%d] = %f\n",
-                corr_peak_pos, q->conv_output_abs[corr_peak_pos],
-                next_peak, q->conv_output_abs[next_peak]);
+        // printf("PSSS peaks are too far apart: [%d] = %f [%d] = %f\n",
+        //         corr_peak_pos, q->conv_output_abs[corr_peak_pos],
+        //         next_peak, q->conv_output_abs[next_peak]);
         *corr_peak_value = 0;
         return 0;
       }

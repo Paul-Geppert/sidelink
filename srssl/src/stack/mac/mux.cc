@@ -217,8 +217,8 @@ uint8_t* mux::sl_pdu_get(srslte::byte_buffer_t* payload, uint32_t pdu_sz)
     int sdu_len = sl_pdu_msg.get()->set_sdu(lcid, sdu_space/*sdu_len*/, rlc);
 
     if (sdu_len > 0) { // new SDU could be added
-      printf("SDU:   allocated lcid=%d, rlc_buffer=%d, allocated=%d/%d, max_sdu_sz=%d, remaining=%d\n",
-              lcid, buffer_state, sdu_len, sdu_space, -1/*max_sdu_sz*/, sl_pdu_msg.rem_size());
+      // printf("SDU:   allocated lcid=%d, rlc_buffer=%d, allocated=%d/%d, max_sdu_sz=%d, remaining=%d\n",
+      //         lcid, buffer_state, sdu_len, sdu_space, -1/*max_sdu_sz*/, sl_pdu_msg.rem_size());
     } else {
       // printf("SDU:   rlc_buffer=%d, allocated=%d/%d, remaining=%d\n", 
       //       buffer_state, sdu_len, sdu_space, sl_pdu_msg.rem_size());
@@ -235,8 +235,8 @@ uint8_t* mux::sl_pdu_get(srslte::byte_buffer_t* payload, uint32_t pdu_sz)
     int sdu_len = sl_pdu_msg.get()->set_sdu(lcid, sdu_space/*sdu_len*/, rlc);
 
     if (sdu_len > 0) { // new SDU could be added
-      printf("SDU:   allocated lcid=%d, rlc_buffer=%d, allocated=%d/%d, max_sdu_sz=%d, remaining=%d\n",
-              lcid, buffer_state, sdu_len, sdu_space, -1/*max_sdu_sz*/, sl_pdu_msg.rem_size());
+      // printf("SDU:   allocated lcid=%d, rlc_buffer=%d, allocated=%d/%d, max_sdu_sz=%d, remaining=%d\n",
+      //         lcid, buffer_state, sdu_len, sdu_space, -1/*max_sdu_sz*/, sl_pdu_msg.rem_size());
     } else {
       // printf("SDU:   rlc_buffer=%d, allocated=%d/%d, remaining=%d\n", 
       //       buffer_state, sdu_len, sdu_space, sl_pdu_msg.rem_size());
