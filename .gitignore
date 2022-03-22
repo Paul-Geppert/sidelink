@@ -86,3 +86,5 @@ local.properties
 CMakeLists.txt.user
 CMakeLists.txt.user.*
 
+# Output files
+srsLTE.backtrace.crash
