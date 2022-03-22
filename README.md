@@ -153,3 +153,17 @@ Replace with correct device paths for the next commands:
 Execute master: `docker run --rm -d -it --name cv2x_m --device /dev/bus/usb/002/006 --privileged sidelink_hhi /sidelink/start_client_log.sh`
 
 Execute client: `docker run --rm -d -it --name cv2x_c --device /dev/bus/usb/002/007 --privileged sidelink_hhi /sidelink/start_master.sh`
+
+Resulting interfaces
+--------------------
+
+```
+10: tun_srssl_m: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UNKNOWN group default qlen 500
+    link/none 
+    inet 10.0.2.11/24 scope global tun_srssl_m
+       valid_lft forever preferred_lft forever
+11: tun_srssl_c: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UNKNOWN group default qlen 500
+    link/none 
+    inet 10.0.2.12/24 scope global tun_srssl_c
+       valid_lft forever preferred_lft forever
+```
