@@ -150,9 +150,9 @@ Build: `docker build -t sidelink_hhi .`
 
 Replace with correct device paths for the next commands:
 
-Execute master: `docker run --rm -d -it --name cv2x_m --device /dev/bus/usb/002/006 --privileged sidelink_hhi /sidelink/start_client_log.sh`
+Execute master: `docker run --rm -d -it --name cv2x_m --device /dev/bus/usb/002/006 --privileged sidelink_hhi /sidelink/start_master.sh`
 
-Execute client: `docker run --rm -d -it --name cv2x_c --device /dev/bus/usb/002/007 --privileged sidelink_hhi /sidelink/start_master.sh`
+Execute client: `docker run --rm -d -it --name cv2x_c --device /dev/bus/usb/002/007 --privileged sidelink_hhi /sidelink/start_client_log.sh`
 
 Resulting interfaces
 --------------------

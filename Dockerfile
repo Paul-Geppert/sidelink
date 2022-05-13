@@ -27,7 +27,7 @@ RUN         add-apt-repository ppa:ettusresearch/uhd && \
                 curl \
 # Install UHD
                 libuhd-dev \
-                libuhd4.1.0 \
+                libuhd4.2.0 \
                 uhd-host \
 # Install UHD dependencies
                 # libboost-all-dev \
@@ -67,6 +67,7 @@ RUN         add-apt-repository ppa:ettusresearch/uhd && \
 # RUN         make -j $MAKEWIDTH
 # RUN         make install
 RUN         uhd_images_downloader
+ENV         UHD_IMAGES_DIR=/usr/share/uhd/images
 WORKDIR     /
 
 RUN         mkdir /sidelink
