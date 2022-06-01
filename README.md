@@ -1,3 +1,44 @@
+# HHI-Sidelink
+
+This repository is a fork of "sidelink" project by Heinrich-Hertz-Institut (HHI). For more information check original README-content below.
+
+## How to use
+
+When starting HHI-Sidelink, it will create one TUN network interface for each SDR (find examples below). HHI-Sidelink can be executed on the host itself but also in Containers, e.g. Docker-Containers.
+
+### Host
+
+One SDR needs to be started as master, the others as client. The master will start a cell and the clients connect to it. This is necessary because of the underlying srsLTE framework.
+
+1. Connect the SDRs to the computer
+2. Optional: find the SDRs by `uhd_find_devices`
+3. Run the start scripts (e.g. `gpa_start_server.sh` and `gpa_start_client_log.sh`)
+
+### Docker
+
+Build: `docker build -t sidelink_hhi .`
+
+Replace with correct device paths for the next commands:
+
+Execute master: `docker run --rm -d -it --name cv2x_m --device /dev/bus/usb/002/006 --privileged sidelink_hhi /sidelink/start_master.sh`
+
+Execute client: `docker run --rm -d -it --name cv2x_c --device /dev/bus/usb/002/007 --privileged sidelink_hhi /sidelink/start_client_log.sh`
+
+## Resulting interfaces
+
+```
+10: tun_srssl_m: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UNKNOWN group default qlen 500
+    link/none 
+    inet 10.0.2.11/24 scope global tun_srssl_m
+       valid_lft forever preferred_lft forever
+11: tun_srssl_c: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UNKNOWN group default qlen 500
+    link/none 
+    inet 10.0.2.12/24 scope global tun_srssl_c
+       valid_lft forever preferred_lft forever
+```
+
+-----------------------------------------
+
 sidelink
 ========
 
@@ -136,34 +177,4 @@ The resource pool configuration should be the same on all nodes in the network, 
 Any field can be set independent or all at once. To set the resource pool configuration:
 ```
 curl -X PUT -H "Content-Type: application/json" -d '{"numSubchannel_r14":10,"sizeSubchannel_r14":5,"sl_OffsetIndicator_r14":0,"sl_Subframe_r14_len":20,"startRB_PSCCH_Pool_r14":0,"startRB_Subchannel_r14":0}' localhost:13001/phy/repo
-```
-
-Original source
----------------
-
-[https://gitlab.hhi.fraunhofer.de/pilz/sidelink.git](https://gitlab.hhi.fraunhofer.de/pilz/sidelink.git)
-
-Docker
-------
-
-Build: `docker build -t sidelink_hhi .`
-
-Replace with correct device paths for the next commands:
-
-Execute master: `docker run --rm -d -it --name cv2x_m --device /dev/bus/usb/002/006 --privileged sidelink_hhi /sidelink/start_master.sh`
-
-Execute client: `docker run --rm -d -it --name cv2x_c --device /dev/bus/usb/002/007 --privileged sidelink_hhi /sidelink/start_client_log.sh`
-
-Resulting interfaces
---------------------
-
-```
-10: tun_srssl_m: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UNKNOWN group default qlen 500
-    link/none 
-    inet 10.0.2.11/24 scope global tun_srssl_m
-       valid_lft forever preferred_lft forever
-11: tun_srssl_c: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UNKNOWN group default qlen 500
-    link/none 
-    inet 10.0.2.12/24 scope global tun_srssl_c
-       valid_lft forever preferred_lft forever
 ```
